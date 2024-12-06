@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+mod paper_format;
+pub use crate::paper_format::*;
 use bytes::Bytes;
 use reqwest::multipart;
 use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
@@ -161,11 +163,11 @@ pub struct RequestOptions {
 
     /// Specify paper width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `8.5` (inches)
-    pub paper_width: Option<f64>,
+    pub paper_width: Option<PaperSize>,
 
     /// Specify paper height using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `11` (inches)
-    pub paper_height: Option<f64>,
+    pub paper_height: Option<PaperSize>,
 
     /// Specify top margin width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `0.39` (inches)
@@ -283,11 +285,11 @@ impl RequestOptions {
         }
 
         if let Some(paper_width) = self.paper_width {
-            form = form.text("paperWidth", paper_width.to_string());
+            form = form.text("paperWidth", format!("{}", paper_width));
         }
 
         if let Some(paper_height) = self.paper_height {
-            form = form.text("paperHeight", paper_height.to_string());
+            form = form.text("paperHeight", format!("{}", paper_height));
         }
 
         if let Some(margin_top) = self.margin_top {
@@ -427,7 +429,7 @@ mod tests {
     #[tokio::test]
     async fn test_url_to_pdf() {
         // Create the API client
-        let client = Client::new("http://localhost:9000");
+        let client = Client::new("http://localhost:3000");
 
         let mut options = RequestOptions::default();
         options.skip_network_idle_events = Some(false);

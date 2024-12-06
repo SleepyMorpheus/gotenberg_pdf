@@ -39,8 +39,12 @@ async fn main() {
 
     // Define optional rendering configurations
     let mut options = RequestOptions::default();
-    options.paper_width = Some(8.5); // 8.5 inches
-    options.paper_height = Some(11.0); // 11 inches
+
+    let height = "11in".parse().unwrap();  // 11 inches
+    let width = "8.5in".parse().unwrap();  // 8.5 inches
+
+    options.paper_height = Some(height);
+    options.paper_width = Some(width);
 
     // Convert a URL to PDF
     match client.url_to_pdf("https://example.com", options).await {
