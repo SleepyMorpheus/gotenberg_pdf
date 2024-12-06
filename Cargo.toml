@@ -2,10 +2,17 @@
 name = "gotenberg_pdf"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "A Rust client for the Gotenberg PDF API"
 
 [dependencies]
-reqwest = { version = "0.11", features = ["multipart"] }
+reqwest = { version = "0.12", features = [
+    "multipart",
+], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
 bytes = "1.0"
 serde_json = "1.0"
+
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
