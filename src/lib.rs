@@ -7,12 +7,37 @@ use reqwest::multipart;
 use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::{self, Debug};
+use zeroize::Zeroize;
 
 /// Gotenberg API client.
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Client {
     client: ReqwestClient,
     base_url: String,
+    username: Option<String>,
+    password: Option<String>,
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        // Securely zeroize the username and password
+        if let Some(username) = &mut self.username {
+            username.zeroize();
+        }
+        if let Some(password) = &mut self.password {
+            password.zeroize();
+        }
+    }
+}
+
+impl Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("base_url", &self.base_url)
+            .field("username", &self.username)
+            .finish()
+    }
 }
 
 impl Client {
@@ -24,6 +49,22 @@ impl Client {
         Client {
             client: ReqwestClient::new(),
             base_url: base_url.to_string(),
+            username: None,
+            password: None,
+        }
+    }
+
+    /// Create a new instance of the API client with basic auth.
+    /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
+    pub fn new_with_user_pass(base_url: &str, username: &str, password: &str) -> Self {
+        // Strip trailing slashes
+        let base_url = base_url.trim_end_matches('/');
+
+        Client {
+            client: ReqwestClient::new(),
+            base_url: base_url.to_string(),
+            username: Some(username.to_string()),
+            password: Some(password.to_string()),
         }
     }
 
@@ -40,6 +81,12 @@ impl Client {
         if let Some(trace) = trace {
             req = req.header("Gotenberg-Trace", trace);
         }
+
+        // Add basic auth if username and password are provided
+        if let (Some(username), Some(password)) = (&self.username, &self.password) {
+            req = req.basic_auth(username, Some(password));
+        }
+
         let response: Response = req.send().await.map_err(Into::into)?;
 
         if !response.status().is_success() {
