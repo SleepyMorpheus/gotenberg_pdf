@@ -100,6 +100,76 @@ async fn main() {
 }
 ```
 
+### Take a Screenshot of a URL
+
+```rust
+use gotenberg_pdf::{Client, ScreenshotOptions, ImageFormat};
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    let client = Client::new("http://localhost:3000");
+
+    let mut options = ScreenshotOptions::default();
+    options.width = Some(1920);
+    options.height = Some(1080);
+    options.format = Some(ImageFormat::Png);
+
+    let image_bytes = client.screenshot_url("https://example.com", options).await.unwrap();
+
+    println!("Screenshot captured: {} bytes", image_bytes.len());
+}
+```
+
+### Convert Document to PDF Using LibreOffice Engine
+
+```rust
+use gotenberg_pdf::{Client, DocumentOptions};
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    let client = Client::new("http://localhost:3000");
+
+    let filename = "test_files/example.docx";
+    let file_content = std::fs::read(filename).expect("Failed to read the file");
+
+    let options = DocumentOptions {
+        landscape: Some(false),
+        ..Default::default()
+    };
+
+    let pdf_bytes = client.pdf_from_doc(filename, file_content, options).await.unwrap();
+}
+```
+
+### Convert HTML to Screenshot Image
+
+```rust
+use gotenberg_pdf::{Client, ScreenshotOptions, ImageFormat};
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    let client = Client::new("http://localhost:3000");
+
+    let html_content = r#"
+    <!doctype html>
+    <html>
+        <head><title>Screenshot</title></head>
+        <body><h1>Hello, Screenshot!</h1></body>
+    </html>
+    "#;
+
+    let mut options = ScreenshotOptions::default();
+    options.width = Some(800);
+    options.height = Some(600);
+    options.format = Some(ImageFormat::Png);
+
+    let image_bytes = client.screenhot_html(html_content, options).await.unwrap();
+}
+```
+
 ## Configuration Options
 
 ### `WebOptions`
