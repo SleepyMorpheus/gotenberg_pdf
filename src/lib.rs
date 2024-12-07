@@ -8,6 +8,7 @@ use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
+use std::str::FromStr;
 use zeroize::Zeroize;
 
 /// Gotenberg API client.
@@ -22,11 +23,14 @@ pub struct Client {
 impl Drop for Client {
     fn drop(&mut self) {
         // Securely zeroize the username and password
-        if let Some(username) = &mut self.username {
-            username.zeroize();
-        }
-        if let Some(password) = &mut self.password {
-            password.zeroize();
+        #[cfg(feature = "auth")]
+        {
+            if let Some(username) = &mut self.username {
+                username.zeroize();
+            }
+            if let Some(password) = &mut self.password {
+                password.zeroize();
+            }
         }
     }
 }
@@ -56,7 +60,8 @@ impl Client {
 
     /// Create a new instance of the API client with basic auth.
     /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
-    pub fn new_with_user_pass(base_url: &str, username: &str, password: &str) -> Self {
+    #[cfg(feature = "auth")]
+    pub fn new_with_auth(base_url: &str, username: &str, password: &str) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
@@ -101,16 +106,16 @@ impl Client {
         response.bytes().await.map_err(Into::into)
     }
 
-    /// Convert a URL to a PDF.
-    pub async fn url_to_pdf(&self, url: &str, options: RequestOptions) -> Result<Bytes, Error> {
+    /// Convert a URL to a PDF using the Chromium engine.
+    pub async fn pdf_from_url(&self, url: &str, options: WebOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
         let form = options.fill_form(form);
         self.post("forms/chromium/convert/url", form, trace).await
     }
 
-    /// Convert HTML to a PDF.
-    pub async fn html_to_pdf(&self, html: &str, options: RequestOptions) -> Result<Bytes, Error> {
+    /// Convert HTML to a PDF using the Chromium engine.
+    pub async fn pdf_from_html(&self, html: &str, options: WebOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
         let form = multipart::Form::new();
@@ -124,7 +129,7 @@ impl Client {
         self.post("forms/chromium/convert/html", form, trace).await
     }
 
-    /// Convert Markdown to a PDF.
+    /// Convert Markdown to a PDF using the Chromium engine.
     ///
     /// The HTML template should in the following format:
     ///
@@ -142,11 +147,11 @@ impl Client {
     /// ```
     ///
     /// The markdown files should be in a "filename" => "content" format. The filename key string must end with `.md`.
-    pub async fn markdown_to_pdf(
+    pub async fn pdf_from_markdown(
         &self,
         html_template: &str,
         markdown: HashMap<&str, &str>,
-        options: RequestOptions,
+        options: WebOptions,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
@@ -164,7 +169,9 @@ impl Client {
             let mut form = form;
             for (filename, content) in markdown {
                 if !filename.ends_with(".md") {
-                    panic!("Markdown filename must end with '.md'");
+                    return Err(Error::FilenameError(
+                        "Markdown filename must end with '.md'".to_string(),
+                    ));
                 }
                 let file_bytes = content.to_string().into_bytes();
                 let part = multipart::Part::bytes(file_bytes)
@@ -179,10 +186,117 @@ impl Client {
         self.post("forms/chromium/convert/markdown", form, trace)
             .await
     }
+
+    /// Take a screenshot of a webpage using the Chromium engine.
+    pub async fn screenshot_url(
+        &self,
+        url: &str,
+        options: ScreenshotOptions,
+    ) -> Result<Bytes, Error> {
+        let trace = options.trace_id.clone();
+        let form = multipart::Form::new().text("url", url.to_string());
+        let form = options.fill_form(form);
+        self.post("forms/chromium/screenshot/url", form, trace)
+            .await
+    }
+
+    /// Take a screenshot of an HTML page using the Chromium engine.
+    pub async fn screenhot_html(
+        &self,
+        html: &str,
+        options: ScreenshotOptions,
+    ) -> Result<Bytes, Error> {
+        let trace = options.trace_id.clone();
+
+        let form = multipart::Form::new();
+        let file_bytes = html.to_string().into_bytes();
+        let part = multipart::Part::bytes(file_bytes)
+            .file_name("index.html")
+            .mime_str("text/html")
+            .unwrap();
+        let form = form.part("index.html", part);
+        let form = options.fill_form(form);
+        self.post("forms/chromium/screenshot/html", form, trace)
+            .await
+    }
+
+    /// Take a screenshot of a set of markdown files using the Chromium engine.
+    pub async fn screenshot_markdown(
+        &self,
+        html_template: &str,
+        markdown: HashMap<&str, &str>,
+        options: ScreenshotOptions,
+    ) -> Result<Bytes, Error> {
+        let trace = options.trace_id.clone();
+
+        let form = multipart::Form::new();
+
+        let file_bytes = html_template.to_string().into_bytes();
+        let part = multipart::Part::bytes(file_bytes)
+            .file_name("index.html")
+            .mime_str("text/html")
+            .unwrap();
+        let form = form.part("index.html", part);
+        let form = options.fill_form(form);
+
+        let form = {
+            let mut form = form;
+            for (filename, content) in markdown {
+                if !filename.ends_with(".md") {
+                    return Err(Error::FilenameError(
+                        "Markdown filename must end with '.md'".to_string(),
+                    ));
+                }
+                let file_bytes = content.to_string().into_bytes();
+                let part = multipart::Part::bytes(file_bytes)
+                    .file_name(filename.to_string())
+                    .mime_str("text/markdown")
+                    .unwrap();
+                form = form.part(filename.to_string(), part);
+            }
+            form
+        };
+
+        self.post("forms/chromium/screenshot/markdown", form, trace)
+            .await
+    }
+
+    /// Convert a document to a PDF using the LibreOffice engine.
+    ///
+    /// Supports the following file formats:
+    /// ```txt
+    /// .123 .602 .abw .bib .bmp .cdr .cgm .cmx .csv .cwk .dbf .dif .doc
+    /// .docm .docx .dot .dotm .dotx .dxf .emf .eps .epub .fodg .fodp .fods
+    /// .fodt .fopd .gif .htm .html .hwp .jpeg .jpg .key .ltx .lwp .mcw .met
+    /// .mml .mw .numbers .odd .odg .odm .odp .ods .odt .otg .oth .otp .ots .ott
+    /// .pages .pbm .pcd .pct .pcx .pdb .pdf .pgm .png .pot .potm .potx .ppm .pps
+    /// .ppt .pptm .pptx .psd .psw .pub .pwp .pxl .ras .rtf .sda .sdc .sdd .sdp .sdw
+    /// .sgl .slk .smf .stc .std .sti .stw .svg .svm .swf .sxc .sxd .sxg .sxi .sxm
+    /// .sxw .tga .tif .tiff .txt .uof .uop .uos .uot .vdx .vor .vsd .vsdm .vsdx
+    /// .wb2 .wk1 .wks .wmf .wpd .wpg .wps .xbm .xhtml .xls .xlsb .xlsm .xlsx .xlt
+    /// .xltm .xltx .xlw .xml .xpm .zabw
+    /// ```
+    pub async fn pdf_from_doc(
+        &self,
+        filename: &str,
+        bytes: Vec<u8>,
+        options: DocumentOptions,
+    ) -> Result<Bytes, Error> {
+        let trace = options.trace_id.clone();
+
+        let form = multipart::Form::new();
+        let part = multipart::Part::bytes(bytes).file_name(filename.to_string());
+        let form = form.part("files", part);
+        let form = options.fill_form(form);
+        self.post("forms/libreoffice/convert", form, trace).await
+    }
 }
 
 #[derive(Debug)]
 pub enum Error {
+    /// Filename Error
+    FilenameError(String),
+
     /// Error commmuniction with the guotenberg server.
     CommunicationError(ReqwestError),
 
@@ -196,10 +310,10 @@ impl Into<Error> for ReqwestError {
     }
 }
 
-/// Configuration for PDF rendering options.
+/// Configuration for rendering PDF from web content using the Chromium engine.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RequestOptions {
+pub struct WebOptions {
     /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
     /// This trace will show up on the end server as a `Gotenberg-Trace` header.
     pub trace_id: Option<String>,
@@ -210,27 +324,27 @@ pub struct RequestOptions {
 
     /// Specify paper width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `8.5` (inches)
-    pub paper_width: Option<PaperSize>,
+    pub paper_width: Option<LinearDimention>,
 
     /// Specify paper height using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `11` (inches)
-    pub paper_height: Option<PaperSize>,
+    pub paper_height: Option<LinearDimention>,
 
     /// Specify top margin width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `0.39` (inches)
-    pub margin_top: Option<f64>,
+    pub margin_top: Option<LinearDimention>,
 
     /// Specify bottom margin width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `0.39` (inches)
-    pub margin_bottom: Option<f64>,
+    pub margin_bottom: Option<LinearDimention>,
 
     /// Specify left margin width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `0.39` (inches)
-    pub margin_left: Option<f64>,
+    pub margin_left: Option<LinearDimention>,
 
     /// Specify right margin width using units like 72pt, 96px, 1in, 25.4mm, 2.54cm, or 6pc.
     /// Default: `0.39` (inches)
-    pub margin_right: Option<f64>,
+    pub margin_right: Option<LinearDimention>,
 
     /// Define whether to prefer page size as defined by CSS.
     /// Default: `false`
@@ -300,10 +414,10 @@ pub struct RequestOptions {
     ///    ```text
     ///    request_options.wait_until = Some("window.globalVar === 'ready'".to_string());
     ///    ```
-    pub wait_until: Option<String>,
+    pub wait_for_expression: Option<String>,
 
     /// The media type to emulate, either "screen" or "print". Default: "print".
-    pub emulated_media_type: Option<String>,
+    pub emulated_media_type: Option<MediaType>,
 
     /// Cookies to store in the Chromium cookie jar
     pub cookies: Option<Vec<Cookie>>,
@@ -312,18 +426,50 @@ pub struct RequestOptions {
     ///
     /// If you are having problems where the page is not fully rendered, try setting this to false.
     pub skip_network_idle_events: Option<bool>,
-    // TODO: userAgent
-    // TODO: extraHttpHeaders
-    // TODO: failOnHttpStatusCodes
-    // TODO: failOnResourceHttpStatusCodes
-    // TODO: failOnResourceLoadingFailed
-    // TODO: failOnConsoleExceptions
-    // TODO: pdfa
-    // TODO: pdfua
-    // TODO: metadata
+
+    /// Override the default User-Agent HTTP header.
+    pub user_agent: Option<String>,
+
+    /// Extra HTTP headers to send by Chromium.
+    pub extra_http_headers: Option<HashMap<String, String>>,
+
+    /// Convert the resulting PDF into the given PDF/A format
+    pub pdfa: Option<PDFFormat>,
+
+    /// Enable PDF for Universal Access for optimal accessibility.
+    pub pdfua: Option<bool>,
+
+    /// Write PDF metadata.
+    /// Not all metadata are writable. Consider taking a look at <https://exiftool.org/TagNames/XMP.html#pdf> for an (exhaustive?) list of available metadata.
+    /// Caution: Writing metadata may compromise PDF/A compliance.
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
+
+    /// Fail on these HTTP status codes.
+    /// Fail a response if the HTTP status code from the main page is not acceptable.
+    /// An X99 entry means every HTTP status codes between X00 and X99 (e.g., 499 means every HTTP status codes between 400 and 499).
+    /// Default: `[499,599]` (all 4XX and 5XX status codes)
+    pub fail_on_http_status_codes: Option<Vec<u32>>,
+
+    /// Fail on these HTTP status codes on resources.
+    /// Fail a response if any of the resources loaded in the page have a status code that is not acceptable.
+    /// An X99 entry means every HTTP status codes between X00 and X99 (e.g., 499 means every HTTP status codes between 400 and 499).
+    /// Default: None
+    pub fail_on_resource_http_status_codes: Option<Vec<u32>>,
+
+    /// Fail a response if Chromium fails to load at least one resource. Default: `false`.
+    pub fail_on_resource_loading_failed: Option<bool>,
+
+    /// Fail a response if there are exceptions in the Chromium console.
+    pub fail_on_console_exceptions: Option<bool>,
 }
 
-impl RequestOptions {
+impl WebOptions {
+    /// Set the paper format. If a custom paper size is needed, set the `paper_width` and `paper_height` fields manually.
+    pub fn set_paper_format(&mut self, format: PaperFormat) {
+        self.paper_width = Some(format.width());
+        self.paper_height = Some(format.height());
+    }
+
     fn fill_form(self, form: reqwest::multipart::Form) -> reqwest::multipart::Form {
         let mut form = form;
 
@@ -408,12 +554,12 @@ impl RequestOptions {
             form = form.text("waitDelay", wait_delay);
         }
 
-        if let Some(wait_until) = self.wait_until {
-            form = form.text("waitUntil", wait_until);
+        if let Some(wait_for_expression) = self.wait_for_expression {
+            form = form.text("waitForExpression", wait_for_expression);
         }
 
         if let Some(emulated_media_type) = self.emulated_media_type {
-            form = form.text("emulatedMediaType", emulated_media_type);
+            form = form.text("emulatedMediaType", emulated_media_type.to_string());
         }
 
         if let Some(cookies) = self.cookies {
@@ -425,6 +571,441 @@ impl RequestOptions {
                 "skipNetworkIdleEvents",
                 skip_network_idle_events.to_string(),
             );
+        }
+
+        if let Some(user_agent) = self.user_agent {
+            form = form.text("userAgent", user_agent);
+        }
+
+        if let Some(extra_http_headers) = self.extra_http_headers {
+            form = form.text(
+                "extraHttpHeaders",
+                serde_json::to_string(&extra_http_headers).unwrap(),
+            );
+        }
+
+        if let Some(pdfa) = self.pdfa {
+            form = form.text("pdfa", pdfa.to_string());
+        }
+
+        if let Some(pdfua) = self.pdfua {
+            form = form.text("pdfua", pdfua.to_string());
+        }
+
+        if let Some(metadata) = self.metadata {
+            form = form.text("metadata", serde_json::to_string(&metadata).unwrap());
+        }
+
+        if let Some(fail_on_http_status_codes) = self.fail_on_http_status_codes {
+            form = form.text(
+                "failOnHttpStatusCodes",
+                serde_json::to_string(&fail_on_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_http_status_codes) = self.fail_on_resource_http_status_codes {
+            form = form.text(
+                "failOnResourceHttpStatusCodes",
+                serde_json::to_string(&fail_on_resource_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_loading_failed) = self.fail_on_resource_loading_failed {
+            form = form.text(
+                "failOnResourceLoadingFailed",
+                fail_on_resource_loading_failed.to_string(),
+            );
+        }
+
+        if let Some(fail_on_console_exceptions) = self.fail_on_console_exceptions {
+            form = form.text(
+                "failOnConsoleExceptions",
+                fail_on_console_exceptions.to_string(),
+            );
+        }
+
+        form
+    }
+}
+
+/// Options for taking a screenshot of a webpage.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ScreenshotOptions {
+    /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
+    /// This trace will show up on the end server as a `Gotenberg-Trace` header.
+    pub trace_id: Option<String>,
+
+    /// The device screen width in pixels. Default: 800.
+    pub width: Option<u32>,
+
+    /// The device screen height in pixels. Default: 600.
+    pub height: Option<u32>,
+
+    /// Define whether to clip the screenshot according to the device dimensions. Default: false.
+    pub clip: Option<bool>,
+
+    /// The image format, either "png", "jpeg" or "webp". Default: png.
+    pub format: Option<ImageFormat>,
+
+    /// The compression quality from range 0 to 100 (jpeg only). Default: 100.
+    pub quality: Option<u8>,
+
+    /// Hide the default white background and allow generating screenshots with transparency. Default: false.
+    pub omit_background: Option<bool>,
+
+    /// Define whether to optimize image encoding for speed, not for resulting size. Default: false.
+    pub optimize_for_speed: Option<bool>,
+
+    /// Duration (e.g, '5s') to wait when loading an HTML document before converting it into PDF.
+    pub wait_delay: Option<String>,
+
+    /// The JavaScript expression to wait before converting an HTML document into PDF until it returns true.
+    ///
+    /// For example:
+    ///    ```text
+    ///    # Somewhere in the HTML document.
+    ///    var globalVar = 'notReady'
+    ///    await promises()
+    ///    window.globalVar = 'ready'
+    ///    ```
+    ///
+    ///    ```text
+    ///    request_options.wait_until = Some("window.globalVar === 'ready'".to_string());
+    ///    ```
+    pub wait_for_expression: Option<String>,
+
+    /// The media type to emulate, either "screen" or "print". Default: "print".
+    pub emulated_media_type: Option<MediaType>,
+
+    /// Cookies to store in the Chromium cookie jar
+    pub cookies: Option<Vec<Cookie>>,
+
+    /// Do not wait for Chromium network to be idle. Default: true.
+    ///
+    /// If you are having problems where the page is not fully rendered, try setting this to false.
+    pub skip_network_idle_events: Option<bool>,
+
+    /// Override the default User-Agent HTTP header.
+    pub user_agent: Option<String>,
+
+    /// Extra HTTP headers to send by Chromium.
+    pub extra_http_headers: Option<HashMap<String, String>>,
+
+    /// Fail on these HTTP status codes.
+    /// Fail a response if the HTTP status code from the main page is not acceptable.
+    /// An X99 entry means every HTTP status codes between X00 and X99 (e.g., 499 means every HTTP status codes between 400 and 499).
+    /// Default: `[499,599]` (all 4XX and 5XX status codes)
+    pub fail_on_http_status_codes: Option<Vec<u32>>,
+
+    /// Fail on these HTTP status codes on resources.
+    /// Fail a response if any of the resources loaded in the page have a status code that is not acceptable.
+    /// An X99 entry means every HTTP status codes between X00 and X99 (e.g., 499 means every HTTP status codes between 400 and 499).
+    /// Default: None
+    pub fail_on_resource_http_status_codes: Option<Vec<u32>>,
+
+    /// Fail a response if Chromium fails to load at least one resource. Default: `false`.
+    pub fail_on_resource_loading_failed: Option<bool>,
+
+    /// Fail a response if there are exceptions in the Chromium console.
+    pub fail_on_console_exceptions: Option<bool>,
+}
+
+impl ScreenshotOptions {
+    fn fill_form(self, form: reqwest::multipart::Form) -> reqwest::multipart::Form {
+        let mut form = form;
+
+        if let Some(width) = self.width {
+            form = form.text("width", width.to_string());
+        }
+
+        if let Some(height) = self.height {
+            form = form.text("height", height.to_string());
+        }
+
+        if let Some(clip) = self.clip {
+            form = form.text("clip", clip.to_string());
+        }
+
+        if let Some(format) = self.format {
+            form = form.text("format", format.to_string());
+        }
+
+        if let Some(quality) = self.quality {
+            form = form.text("quality", quality.to_string());
+        }
+
+        if let Some(omit_background) = self.omit_background {
+            form = form.text("omitBackground", omit_background.to_string());
+        }
+
+        if let Some(optimize_for_speed) = self.optimize_for_speed {
+            form = form.text("optimizeForSpeed", optimize_for_speed.to_string());
+        }
+
+        if let Some(wait_delay) = self.wait_delay {
+            form = form.text("waitDelay", wait_delay);
+        }
+
+        if let Some(wait_for_expression) = self.wait_for_expression {
+            form = form.text("waitForExpression", wait_for_expression);
+        }
+
+        if let Some(emulated_media_type) = self.emulated_media_type {
+            form = form.text("emulatedMediaType", emulated_media_type.to_string());
+        }
+
+        if let Some(cookies) = self.cookies {
+            form = form.text("cookies", serde_json::to_string(&cookies).unwrap());
+        }
+
+        if let Some(skip_network_idle_events) = self.skip_network_idle_events {
+            form = form.text(
+                "skipNetworkIdleEvents",
+                skip_network_idle_events.to_string(),
+            );
+        }
+
+        if let Some(user_agent) = self.user_agent {
+            form = form.text("userAgent", user_agent);
+        }
+
+        if let Some(extra_http_headers) = self.extra_http_headers {
+            form = form.text(
+                "extraHttpHeaders",
+                serde_json::to_string(&extra_http_headers).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_http_status_codes) = self.fail_on_http_status_codes {
+            form = form.text(
+                "failOnHttpStatusCodes",
+                serde_json::to_string(&fail_on_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_http_status_codes) = self.fail_on_resource_http_status_codes {
+            form = form.text(
+                "failOnResourceHttpStatusCodes",
+                serde_json::to_string(&fail_on_resource_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_loading_failed) = self.fail_on_resource_loading_failed {
+            form = form.text(
+                "failOnResourceLoadingFailed",
+                fail_on_resource_loading_failed.to_string(),
+            );
+        }
+
+        if let Some(fail_on_console_exceptions) = self.fail_on_console_exceptions {
+            form = form.text(
+                "failOnConsoleExceptions",
+                fail_on_console_exceptions.to_string(),
+            );
+        }
+
+        form
+    }
+}
+
+/// Options for converting a document to a PDF using the LibreOffice engine.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct DocumentOptions {
+    /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
+    /// This trace will show up on the end server as a `Gotenberg-Trace` header.
+    pub trace_id: Option<String>,
+
+    /// Set the password for opening the source file.
+    pub password: Option<String>,
+
+    /// Set the paper orientation to landscape. default: false
+    pub landscape: Option<bool>,
+
+    /// Page ranges to print, e.g., '1-4' - empty means all pages. default: All pages
+    pub native_page_ranges: Option<String>,
+
+    /// Specify whether form fields are exported as widgets or only their fixed print representation is exported. default: true
+    pub export_form_fields: Option<bool>,
+
+    /// Specify whether multiple form fields exported are allowed to have the same field name. default: false
+    pub allow_duplicate_field_names: Option<bool>,
+
+    /// Specify if bookmarks are exported to PDF. default: true
+    pub export_bookmarks: Option<bool>,
+
+    /// Specify that the bookmarks contained in the source LibreOffice file should be exported to the PDF file as Named Destination. default: false
+    pub export_bookmarks_to_pdf_destination: Option<bool>,
+
+    /// Export the placeholders fields visual markings only. The exported placeholder is ineffective. default: false
+    pub export_placeholders: Option<bool>,
+
+    /// Specify if notes are exported to PDF. default: false
+    pub export_notes: Option<bool>,
+
+    /// Specify if notes pages are exported to PDF. Notes pages are available in Impress documents only. default: false
+    pub export_notes_pages: Option<bool>,
+
+    /// Specify, if the form field exportNotesPages is set to true, if only notes pages are exported to PDF. default: false
+    pub export_only_notes_pages: Option<bool>,
+
+    /// Specify if notes in margin are exported to PDF. default: false
+    pub export_notes_in_margin: Option<bool>,
+
+    /// Specify that the target documents with `.od[tpgs]` extension, will have that extension changed to .pdf when the link is exported to PDF. The source document remains untouched. default: false
+    pub convert_ooo_target_to_pdf_target: Option<bool>,
+
+    /// Specify that the file system related hyperlinks (file:// protocol) present in the document will be exported as relative to the source document location. default: false
+    pub export_links_relative_fsys: Option<bool>,
+
+    /// Export, for LibreOffice Impress, slides that are not included in slide shows. default: false
+    pub export_hidden_slides: Option<bool>,
+
+    /// Specify that automatically inserted empty pages are suppressed. This option is active only if storing Writer documents. default: false
+    pub skip_empty_pages: Option<bool>,
+
+    /// Specify that a stream is inserted to the PDF file which contains the original document for archiving purposes. default: false
+    pub add_original_document_as_stream: Option<bool>,
+
+    /// Ignore each sheet’s paper size, print ranges and shown/hidden status and puts every sheet (even hidden sheets) on exactly one page. default: false
+    pub single_page_sheets: Option<bool>,
+
+    /// Specify if images are exported to PDF using a lossless compression format like PNG or compressed using the JPEG format. default: false
+    pub lossless_image_compression: Option<bool>,
+
+    /// Specify the quality of the JPG export. A higher value produces a higher-quality image and a larger file. Between 1 and 100. default: 90
+    pub quality: Option<u8>,
+
+    /// Specify if the resolution of each image is reduced to the resolution specified by the form field maxImageResolution. default: false
+    pub reduce_image_resolution: Option<bool>,
+
+    /// If the form field reduceImageResolution is set to true, tell if all images will be reduced to the given value in DPI. Possible values are: 75, 150, 300, 600 and 1200. default: 300
+    pub max_image_resolution: Option<u32>,
+
+    /// Convert the resulting PDF into the given PDF/A format
+    pub pdfa: Option<PDFFormat>,
+
+    /// Enable PDF for Universal Access for optimal accessibility.
+    pub pdfua: Option<bool>,
+}
+
+/// Options for converting a document to a PDF using the LibreOffice engine.
+impl DocumentOptions {
+    fn fill_form(self, form: reqwest::multipart::Form) -> reqwest::multipart::Form {
+        let mut form = form;
+
+        if let Some(password) = self.password {
+            form = form.text("password", password);
+        }
+
+        if let Some(landscape) = self.landscape {
+            form = form.text("landscape", landscape.to_string());
+        }
+
+        if let Some(native_page_ranges) = self.native_page_ranges {
+            form = form.text("nativePageRanges", native_page_ranges);
+        }
+
+        if let Some(export_form_fields) = self.export_form_fields {
+            form = form.text("exportFormFields", export_form_fields.to_string());
+        }
+
+        if let Some(allow_duplicate_field_names) = self.allow_duplicate_field_names {
+            form = form.text(
+                "allowDuplicateFieldNames",
+                allow_duplicate_field_names.to_string(),
+            );
+        }
+
+        if let Some(export_bookmarks) = self.export_bookmarks {
+            form = form.text("exportBookmarks", export_bookmarks.to_string());
+        }
+
+        if let Some(export_bookmarks_to_pdf_destination) = self.export_bookmarks_to_pdf_destination
+        {
+            form = form.text(
+                "exportBookmarksToPdfDestination",
+                export_bookmarks_to_pdf_destination.to_string(),
+            );
+        }
+
+        if let Some(export_placeholders) = self.export_placeholders {
+            form = form.text("exportPlaceholders", export_placeholders.to_string());
+        }
+
+        if let Some(export_notes) = self.export_notes {
+            form = form.text("exportNotes", export_notes.to_string());
+        }
+
+        if let Some(export_notes_pages) = self.export_notes_pages {
+            form = form.text("exportNotesPages", export_notes_pages.to_string());
+        }
+
+        if let Some(export_only_notes_pages) = self.export_only_notes_pages {
+            form = form.text("exportOnlyNotesPages", export_only_notes_pages.to_string());
+        }
+
+        if let Some(export_notes_in_margin) = self.export_notes_in_margin {
+            form = form.text("exportNotesInMargin", export_notes_in_margin.to_string());
+        }
+
+        if let Some(convert_ooo_target_to_pdf_target) = self.convert_ooo_target_to_pdf_target {
+            form = form.text(
+                "convertOooTargetToPdfTarget",
+                convert_ooo_target_to_pdf_target.to_string(),
+            );
+        }
+
+        if let Some(export_links_relative_fsys) = self.export_links_relative_fsys {
+            form = form.text(
+                "exportLinksRelativeFsys",
+                export_links_relative_fsys.to_string(),
+            );
+        }
+
+        if let Some(export_hidden_slides) = self.export_hidden_slides {
+            form = form.text("exportHiddenSlides", export_hidden_slides.to_string());
+        }
+
+        if let Some(skip_empty_pages) = self.skip_empty_pages {
+            form = form.text("skipEmptyPages", skip_empty_pages.to_string());
+        }
+
+        if let Some(add_original_document_as_stream) = self.add_original_document_as_stream {
+            form = form.text(
+                "addOriginalDocumentAsStream",
+                add_original_document_as_stream.to_string(),
+            );
+        }
+
+        if let Some(single_page_sheets) = self.single_page_sheets {
+            form = form.text("singlePageSheets", single_page_sheets.to_string());
+        }
+
+        if let Some(lossless_image_compression) = self.lossless_image_compression {
+            form = form.text(
+                "losslessImageCompression",
+                lossless_image_compression.to_string(),
+            );
+        }
+
+        if let Some(quality) = self.quality {
+            form = form.text("quality", quality.to_string());
+        }
+
+        if let Some(reduce_image_resolution) = self.reduce_image_resolution {
+            form = form.text("reduceImageResolution", reduce_image_resolution.to_string());
+        }
+
+        if let Some(max_image_resolution) = self.max_image_resolution {
+            form = form.text("maxImageResolution", max_image_resolution.to_string());
+        }
+
+        if let Some(pdfa) = self.pdfa {
+            form = form.text("pdfa", pdfa.to_string());
+        }
+
+        if let Some(pdfua) = self.pdfua {
+            form = form.text("pdfua", pdfua.to_string());
         }
 
         form
@@ -468,6 +1049,134 @@ impl Cookie {
     }
 }
 
+/// Supported PDF binary formats.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PDFFormat {
+    /// PDF/A-1: (ISO 19005-1:2005)
+    #[serde(rename = "PDF/A-1b")]
+    A1b,
+
+    /// PDF/A-2: (ISO 19005-2:2011)
+    #[serde(rename = "PDF/A-2b")]
+    A2b,
+
+    /// PDF/A-3 (ISO 19005-3:2012)
+    #[serde(rename = "PDF/A-3b")]
+    A3b,
+}
+
+impl PDFFormat {
+    pub fn to_string(&self) -> String {
+        match self {
+            PDFFormat::A1b => "PDF/A-1b".to_string(),
+            PDFFormat::A2b => "PDF/A-2b".to_string(),
+            PDFFormat::A3b => "PDF/A-3b".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for PDFFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl FromStr for PDFFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "PDF/A-1b" => Ok(PDFFormat::A1b),
+            "PDF/A-2b" => Ok(PDFFormat::A2b),
+            "PDF/A-3b" => Ok(PDFFormat::A3b),
+            _ => Err("Invalid PDF format".to_string()),
+        }
+    }
+}
+
+/// Image format to use when taking a screenshot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ImageFormat {
+    /// Portable Network Graphics (PNG)
+    #[serde(rename = "png")]
+    Png,
+
+    /// JPEG Image, best for photographs.
+    #[serde(rename = "jpeg")]
+    Jpeg,
+
+    /// WebP Image, best quality and compression, but not as widely supported.
+    #[serde(rename = "webp")]
+    Webp,
+}
+
+impl ImageFormat {
+    pub fn to_string(&self) -> String {
+        match self {
+            ImageFormat::Png => "png".to_string(),
+            ImageFormat::Jpeg => "jpeg".to_string(),
+            ImageFormat::Webp => "webp".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ImageFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl FromStr for ImageFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "png" => Ok(ImageFormat::Png),
+            "jpeg" => Ok(ImageFormat::Jpeg),
+            "webp" => Ok(ImageFormat::Webp),
+            _ => Err("Invalid image format".to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MediaType {
+    #[serde(rename = "screen")]
+    /// Screen media type.
+    Screen,
+
+    #[serde(rename = "print")]
+    /// Print media type.
+    Print,
+}
+
+impl MediaType {
+    pub fn to_string(&self) -> String {
+        match self {
+            MediaType::Screen => "screen".to_string(),
+            MediaType::Print => "print".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for MediaType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl FromStr for MediaType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "screen" => Ok(MediaType::Screen),
+            "print" => Ok(MediaType::Print),
+            _ => Err("Invalid media type".to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -478,11 +1187,11 @@ mod tests {
         // Create the API client
         let client = Client::new("http://localhost:3000");
 
-        let mut options = RequestOptions::default();
+        let mut options = WebOptions::default();
         options.skip_network_idle_events = Some(false);
 
         // Call the API and handle the result
-        match client.url_to_pdf("https://ocudigital.com", options).await {
+        match client.pdf_from_url("https://example.com", options).await {
             Ok(bytes) => {
                 // Verify the response content
                 assert!(!bytes.is_empty(), "PDF content should not be empty");

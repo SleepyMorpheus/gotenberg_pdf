@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
-// Paper Format
-// ------------
+/// Paper Format, A0 to A6, Ledger, Legal, Letter, Tabloid
 #[derive(Debug, Clone, PartialEq)]
 pub enum PaperFormat {
     A0,
@@ -18,21 +17,23 @@ pub enum PaperFormat {
     Tabloid,
 }
 
+/// Linear dimention, for example `11.7in`, `33.1cm`, `50px`
 #[derive(Debug, Clone, PartialEq)]
-pub struct PaperSize {
+pub struct LinearDimention {
     size: f64,
     unit: Option<Unit>,
 }
 
-impl PaperSize {
+impl LinearDimention {
     pub fn new(size: f64, unit: Unit) -> Self {
-        PaperSize {
+        LinearDimention {
             size,
             unit: Some(unit),
         }
     }
 }
 
+/// Unit of the linear dimention, for example `mm`, `cm`, `in`, `px`, `pt`, `pc`
 #[derive(Debug, Clone, PartialEq)]
 pub enum Unit {
     Mm,
@@ -43,7 +44,7 @@ pub enum Unit {
     Pc,
 }
 
-impl fmt::Display for PaperSize {
+impl fmt::Display for LinearDimention {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.unit {
             Some(Unit::Mm) => write!(f, "{}mm", self.size),
@@ -57,7 +58,7 @@ impl fmt::Display for PaperSize {
     }
 }
 
-impl FromStr for PaperSize {
+impl FromStr for LinearDimention {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -76,40 +77,40 @@ impl FromStr for PaperSize {
             _ => return Err("Invalid unit".to_string()),
         };
 
-        Ok(PaperSize { size, unit })
+        Ok(LinearDimention { size, unit })
     }
 }
 
 impl PaperFormat {
-    pub fn height(&self) -> PaperSize {
+    pub fn height(&self) -> LinearDimention {
         match self {
-            PaperFormat::A0 => PaperSize::new(46.8, Unit::Cm),
-            PaperFormat::A1 => PaperSize::new(33.1, Unit::Cm),
-            PaperFormat::A2 => PaperSize::new(23.4, Unit::Cm),
-            PaperFormat::A3 => PaperSize::new(16.54, Unit::Cm),
-            PaperFormat::A4 => PaperSize::new(11.7, Unit::In),
-            PaperFormat::A5 => PaperSize::new(8.27, Unit::In),
-            PaperFormat::A6 => PaperSize::new(5.83, Unit::In),
-            PaperFormat::Ledger => PaperSize::new(11.0, Unit::In),
-            PaperFormat::Legal => PaperSize::new(14.0, Unit::In),
-            PaperFormat::Letter => PaperSize::new(11.0, Unit::In),
-            PaperFormat::Tabloid => PaperSize::new(17.0, Unit::In),
+            PaperFormat::A0 => LinearDimention::new(46.8, Unit::Cm),
+            PaperFormat::A1 => LinearDimention::new(33.1, Unit::Cm),
+            PaperFormat::A2 => LinearDimention::new(23.4, Unit::Cm),
+            PaperFormat::A3 => LinearDimention::new(16.54, Unit::Cm),
+            PaperFormat::A4 => LinearDimention::new(11.7, Unit::In),
+            PaperFormat::A5 => LinearDimention::new(8.27, Unit::In),
+            PaperFormat::A6 => LinearDimention::new(5.83, Unit::In),
+            PaperFormat::Ledger => LinearDimention::new(11.0, Unit::In),
+            PaperFormat::Legal => LinearDimention::new(14.0, Unit::In),
+            PaperFormat::Letter => LinearDimention::new(11.0, Unit::In),
+            PaperFormat::Tabloid => LinearDimention::new(17.0, Unit::In),
         }
     }
 
-    pub fn width(&self) -> PaperSize {
+    pub fn width(&self) -> LinearDimention {
         match self {
-            PaperFormat::A0 => PaperSize::new(33.1, Unit::Cm),
-            PaperFormat::A1 => PaperSize::new(23.4, Unit::Cm),
-            PaperFormat::A2 => PaperSize::new(16.54, Unit::Cm),
-            PaperFormat::A3 => PaperSize::new(11.7, Unit::Cm),
-            PaperFormat::A4 => PaperSize::new(8.27, Unit::In),
-            PaperFormat::A5 => PaperSize::new(5.83, Unit::In),
-            PaperFormat::A6 => PaperSize::new(4.13, Unit::In),
-            PaperFormat::Ledger => PaperSize::new(17.0, Unit::In),
-            PaperFormat::Legal => PaperSize::new(8.5, Unit::In),
-            PaperFormat::Letter => PaperSize::new(8.5, Unit::In),
-            PaperFormat::Tabloid => PaperSize::new(11.0, Unit::In),
+            PaperFormat::A0 => LinearDimention::new(33.1, Unit::Cm),
+            PaperFormat::A1 => LinearDimention::new(23.4, Unit::Cm),
+            PaperFormat::A2 => LinearDimention::new(16.54, Unit::Cm),
+            PaperFormat::A3 => LinearDimention::new(11.7, Unit::Cm),
+            PaperFormat::A4 => LinearDimention::new(8.27, Unit::In),
+            PaperFormat::A5 => LinearDimention::new(5.83, Unit::In),
+            PaperFormat::A6 => LinearDimention::new(4.13, Unit::In),
+            PaperFormat::Ledger => LinearDimention::new(17.0, Unit::In),
+            PaperFormat::Legal => LinearDimention::new(8.5, Unit::In),
+            PaperFormat::Letter => LinearDimention::new(8.5, Unit::In),
+            PaperFormat::Tabloid => LinearDimention::new(11.0, Unit::In),
         }
     }
 }
@@ -153,8 +154,8 @@ impl FromStr for PaperFormat {
     }
 }
 
-// Custom Serializer for PaperSize
-impl Serialize for PaperSize {
+// Custom Serializer for LinearDimention
+impl Serialize for LinearDimention {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -164,8 +165,8 @@ impl Serialize for PaperSize {
     }
 }
 
-// Custom Deserializer for PaperSize
-impl<'de> Deserialize<'de> for PaperSize {
+// Custom Deserializer for LinearDimention
+impl<'de> Deserialize<'de> for LinearDimention {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -183,35 +184,35 @@ mod tests {
     #[test]
     fn test_paper_size_from_str_valid() {
         assert_eq!(
-            "11.7in".parse::<PaperSize>(),
-            Ok(PaperSize::new(11.7, Unit::In))
+            "11.7in".parse::<LinearDimention>(),
+            Ok(LinearDimention::new(11.7, Unit::In))
         );
         assert_eq!(
-            "33.1cm".parse::<PaperSize>(),
-            Ok(PaperSize::new(33.1, Unit::Cm))
+            "33.1cm".parse::<LinearDimention>(),
+            Ok(LinearDimention::new(33.1, Unit::Cm))
         );
         assert_eq!(
-            "5.83in".parse::<PaperSize>(),
-            Ok(PaperSize::new(5.83, Unit::In))
+            "5.83in".parse::<LinearDimention>(),
+            Ok(LinearDimention::new(5.83, Unit::In))
         );
         assert_eq!(
-            "5in".parse::<PaperSize>(),
-            Ok(PaperSize::new(5.0, Unit::In))
+            "5in".parse::<LinearDimention>(),
+            Ok(LinearDimention::new(5.0, Unit::In))
         );
     }
 
     #[test]
     fn test_paper_size_from_str_invalid() {
-        assert!("abc".parse::<PaperSize>().is_err());
-        assert!("11.7invalid".parse::<PaperSize>().is_err());
+        assert!("abc".parse::<LinearDimention>().is_err());
+        assert!("11.7invalid".parse::<LinearDimention>().is_err());
     }
 
     #[test]
     fn test_paper_size_to_string() {
-        let size = PaperSize::new(11.7, Unit::In);
+        let size = LinearDimention::new(11.7, Unit::In);
         assert_eq!(size.to_string(), "11.7in");
 
-        let size = PaperSize::new(33.1, Unit::Cm);
+        let size = LinearDimention::new(33.1, Unit::Cm);
         assert_eq!(size.to_string(), "33.1cm");
     }
 
@@ -230,13 +231,13 @@ mod tests {
     #[test]
     fn test_paper_format_dimensions() {
         let a4 = PaperFormat::A4;
-        assert_eq!(a4.height(), PaperSize::new(11.7, Unit::In));
-        assert_eq!(a4.width(), PaperSize::new(8.27, Unit::In));
+        assert_eq!(a4.height(), LinearDimention::new(11.7, Unit::In));
+        assert_eq!(a4.width(), LinearDimention::new(8.27, Unit::In));
     }
 
     #[test]
     fn test_paper_size_serialization() {
-        let size = PaperSize::new(11.7, Unit::In);
+        let size = LinearDimention::new(11.7, Unit::In);
         let serialized = serde_json::to_string(&size).unwrap();
         assert_eq!(serialized, "\"11.7in\"");
     }
@@ -244,8 +245,8 @@ mod tests {
     #[test]
     fn test_paper_size_deserialization() {
         let serialized = "\"11.7in\"";
-        let deserialized: PaperSize = serde_json::from_str(serialized).unwrap();
-        assert_eq!(deserialized, PaperSize::new(11.7, Unit::In));
+        let deserialized: LinearDimention = serde_json::from_str(serialized).unwrap();
+        assert_eq!(deserialized, LinearDimention::new(11.7, Unit::In));
     }
 
     #[test]
