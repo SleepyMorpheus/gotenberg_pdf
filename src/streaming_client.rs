@@ -6,7 +6,7 @@ use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
-/// Gotenberg Streaming API client. Available with the `streaming` feature enabled.
+/// Gotenberg Streaming API client. Available with the `stream` feature enabled.
 #[derive(Clone)]
 pub struct StreamingClient {
     client: ReqwestClient,

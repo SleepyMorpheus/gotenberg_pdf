@@ -329,3 +329,7 @@ By default there is no support for HTTPS or HTTP/2. If you need these features, 
  - `rustls-tls` - Enables TLS / HTTPS support using the `rustls` library.
  - `native-tls` - Enables TLS / HTTPS support using the native system TLS library.
  - `http2` - Enables HTTP/2 support. Use this if you need to post data larger than 32MB.
+
+Additional features:
+  - `stream` - Enables the streaming client to stream generated PDFs directly to disk or other destinations.
+  - `zeroize` - Enables zeroizing sensitive data in the client. Enabled by default.
