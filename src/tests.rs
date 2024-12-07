@@ -735,3 +735,59 @@ async fn test_doc_options_pdfa() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn test_pdf_metadata() {
+    let client = Client::new("http://localhost:3000");
+    let options = DocumentOptions::default();
+
+    // Create the PDF
+    let pdf_content = client
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options.clone())
+        .await
+        .unwrap();
+
+    // Update the metadata
+    let metadata = HashMap::from([
+        ("Title".to_string(), "Test Document 123".into()),
+        ("Author".to_string(), "Test Author 123".into()),
+    ]);
+
+    let pdf_content = client
+        .write_metadata(pdf_content.to_vec(), metadata)
+        .await
+        .unwrap();
+
+    // Read the metadata
+    let metadata = client.read_metadata(pdf_content.to_vec()).await.unwrap();
+
+    assert_eq!(
+        metadata.get("Title"),
+        Some(&serde_json::Value::String("Test Document 123".to_string()))
+    );
+    assert_eq!(
+        metadata.get("Author"),
+        Some(&serde_json::Value::String("Test Author 123".to_string()))
+    );
+}
+
+#[tokio::test]
+pub async fn test_health_check() {
+    let client = Client::new("http://localhost:3000");
+    let _health = client.health_check().await.unwrap();
+}
+
+#[tokio::test]
+pub async fn test_version_string() {
+    let client = Client::new("http://localhost:3000");
+    let version = client.version().await.unwrap();
+
+    // It should start with 8.
+    assert!(version.starts_with("8."));
+}
+
+#[tokio::test]
+pub async fn test_metrics() {
+    let client = Client::new("http://localhost:3000");
+    let _metrics = client.metrics().await.unwrap();
+}
