@@ -1,5 +1,8 @@
 # Gotenberg PDF Client
 
+[![crates.io](https://img.shields.io/crates/v/gotenberg_pdf.svg)](https://crates.io/crates/gotenberg_pdf)
+[![docs.rs](https://img.shields.io/badge/docs.rs-gotenberg_pdf-green)](https://docs.rs/gotenberg_pdf)
+
 **`gotenberg_pdf`** is a Rust library that provides an easy-to-use interface for interacting with the [Gotenberg API](https://gotenberg.dev/). Use this library to convert URLs, HTML, or Markdown to PDF with highly customizable options.
 
 ## Features
