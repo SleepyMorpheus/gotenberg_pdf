@@ -161,8 +161,8 @@ pub struct WebOptions {
     /// Caveats: No JavaScript or external resources.
     pub footer_html: Option<String>,
 
-    /// Duration (e.g, '5s') to wait when loading an HTML document before converting it into PDF.
-    pub wait_delay: Option<String>,
+    /// Duration to wait when loading an HTML document before converting it into PDF.
+    pub wait_delay: Option<std::time::Duration>,
 
     /// The JavaScript expression to wait before converting an HTML document into PDF until it returns true.
     ///
@@ -314,7 +314,7 @@ impl WebOptions {
         }
 
         if let Some(wait_delay) = self.wait_delay {
-            form = form.text("waitDelay", wait_delay);
+            form = form.text("waitDelay", format!("{}ms", wait_delay.as_millis()));
         }
 
         if let Some(wait_for_expression) = self.wait_for_expression {
@@ -419,8 +419,8 @@ pub struct ScreenshotOptions {
     /// Define whether to optimize image encoding for speed, not for resulting size. Default: false.
     pub optimize_for_speed: Option<bool>,
 
-    /// Duration (e.g, '5s') to wait when loading an HTML document before converting it into PDF.
-    pub wait_delay: Option<String>,
+    /// Duration to wait when loading an HTML document before converting it into PDF.
+    pub wait_delay: Option<std::time::Duration>,
 
     /// The JavaScript expression to wait before converting an HTML document into PDF until it returns true.
     ///
@@ -506,7 +506,7 @@ impl ScreenshotOptions {
         }
 
         if let Some(wait_delay) = self.wait_delay {
-            form = form.text("waitDelay", wait_delay);
+            form = form.text("waitDelay", format!("{}ms", wait_delay.as_millis()));
         }
 
         if let Some(wait_for_expression) = self.wait_for_expression {
@@ -803,10 +803,10 @@ pub struct Cookie {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub http_only: Option<bool>,
 
-    /// Accepted values are "Strict", "Lax" or "None".
+    /// The [`SameSite`] cookie attribute.
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub same_site: Option<String>,
+    pub same_site: Option<SameSite>,
 }
 
 impl Cookie {
@@ -818,6 +818,19 @@ impl Cookie {
             ..Default::default()
         }
     }
+}
+
+/// The `SameSite` cookie attribute.
+///
+/// A cookie with a SameSite attribute is imposed restrictions on when it is sent to the origin server in a cross-site request.
+/// If the SameSite attribute is “Strict”, then the cookie is never sent in cross-site requests.
+/// If the SameSite attribute is “Lax”, the cookie is only sent in cross-site requests with “safe” HTTP methods, i.e, GET, HEAD, OPTIONS, TRACE.
+/// If the SameSite attribute is “None”, the cookie is sent in all cross-site requests if the “Secure” flag is also set, otherwise the cookie is ignored.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum SameSite {
+    Strict,
+    Lax,
+    None,
 }
 
 /// Supported PDF binary formats.

@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Duration;
 use tokio;
 
 const HTML_CONTENT: &str = r#"
@@ -150,7 +151,7 @@ async fn test_web_options_wait_delay() {
     let client = Client::new("http://localhost:3000");
 
     let mut options = WebOptions::default();
-    options.wait_delay = Some("1s".into());
+    options.wait_delay = Some(Duration::from_secs(1));
 
     let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
 }
@@ -208,18 +209,6 @@ async fn test_web_options_negative_scale() {
 
     let result = client.pdf_from_html(HTML_CONTENT, options).await;
     assert!(result.is_err(), "Expected negative scale to fail");
-}
-
-#[tokio::test]
-async fn test_web_options_invalid_wait_delay() {
-    let client = Client::new("http://localhost:3000");
-
-    let mut options = WebOptions::default();
-    // Invalid wait delay format
-    options.wait_delay = Some("invalid-delay".to_string());
-
-    let result = client.pdf_from_html(HTML_CONTENT, options).await;
-    assert!(result.is_err(), "Expected invalid wait delay to fail");
 }
 
 #[tokio::test]
@@ -311,7 +300,7 @@ async fn test_screenshot_options_optimize_for_speed() {
 async fn test_screenshot_options_wait_delay() {
     let client = Client::new("http://localhost:3000");
     let mut options = ScreenshotOptions::default();
-    options.wait_delay = Some("1s".to_string());
+    options.wait_delay = Some(Duration::from_secs(1));
 
     let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
 }
