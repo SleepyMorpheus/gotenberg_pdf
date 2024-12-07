@@ -1,3 +1,5 @@
+name: Rust
+
 on:
   push:
     branches: [ "master" ]
@@ -17,19 +19,19 @@ jobs:
     # Step to spin up the Gotenberg Docker container
     - name: Start Gotenberg Docker container
       run: docker run -d -p 3000:3000 gotenberg/gotenberg:8
-      
-    # Step to wait for the container to be ready (optional, ensure the service is up)
-    - name: Wait for Gotenberg to be ready
+
+    # Step to wait for any HTTP response from Gotenberg
+    - name: Check Gotenberg container is reachable
       run: |
         for i in {1..10}; do
-          if curl --silent http://localhost:3000/ | grep -q "OK"; then
-            echo "Gotenberg is ready!";
+          if curl --silent --head --fail http://localhost:3000/; then
+            echo "Gotenberg is reachable!";
             exit 0;
           fi
           echo "Waiting for Gotenberg...";
           sleep 3;
         done
-        echo "Gotenberg failed to start";
+        echo "Failed to reach Gotenberg";
         exit 1
 
     - name: Run tests
