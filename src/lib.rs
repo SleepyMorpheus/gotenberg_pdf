@@ -5,8 +5,10 @@ pub mod health;
 
 mod page_range;
 mod paper_format;
+
 pub use crate::paper_format::*;
-use bytes::Bytes;
+/// Re-exported from the `bytes` crate (See [`bytes::Bytes`]).
+pub use bytes::Bytes;
 pub use page_range::*;
 use reqwest::multipart;
 use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
@@ -17,6 +19,9 @@ use std::str::FromStr;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
+
+#[cfg(test)]
+mod tests;
 
 /// Gotenberg API client.
 #[derive(Clone)]
@@ -317,7 +322,7 @@ impl Client {
     /// Get the metrics of the Gotenberg server in prometheus format.
     /// The results will not be parsed and are returned as a multi-line string.
     ///
-    /// By default the namespace is `gotenberg`, but this can be changed by passing --prometheus-namespace to the Gotenberg server.
+    /// By default the namespace is `gotenberg`, but this can be changed by passing `--prometheus-namespace` to the Gotenberg server on startup.
     ///
     /// - `{namespace}_chromium_requests_queue_size`    Current number of Chromium conversion requests waiting to be treated.
     /// - `{namespace}_chromium_restarts_count`	        Current number of Chromium restarts.
@@ -1098,15 +1103,23 @@ pub struct Cookie {
     pub domain: String,
 
     /// Cookie path.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
 
     /// Set the cookie to secure if true.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub secure: Option<bool>,
 
     /// Set the cookie as HTTP-only if true.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub http_only: Option<bool>,
 
     /// Accepted values are "Strict", "Lax" or "None".
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub same_site: Option<String>,
 }
 
@@ -1258,39 +1271,6 @@ impl FromStr for MediaType {
                 s.to_string(),
                 "Invalid media type".to_string(),
             )),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tokio;
-
-    #[tokio::test]
-    async fn test_url_to_pdf() {
-        // Create the API client
-        let client = Client::new("http://localhost:3000");
-
-        let mut options = WebOptions::default();
-        options.skip_network_idle_events = Some(false);
-
-        // Call the API and handle the result
-        match client.pdf_from_url("https://example.com", options).await {
-            Ok(bytes) => {
-                // Verify the response content
-                assert!(!bytes.is_empty(), "PDF content should not be empty");
-                println!("Received PDF content: {} bytes", bytes.len());
-
-                // Save to local temp directory
-                let temp_dir = std::env::temp_dir();
-                let pdf_path = temp_dir.join("ocudigital.pdf");
-                std::fs::write(&pdf_path, bytes).unwrap();
-                println!("PDF saved to: {:?}", pdf_path);
-            }
-            Err(err) => {
-                panic!("API call failed: {:?}", err);
-            }
         }
     }
 }
