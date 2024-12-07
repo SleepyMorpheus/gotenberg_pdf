@@ -179,6 +179,40 @@ async fn main() {
 }
 ```
 
+
+### Use the steaming client
+
+Requires the `stream` feature to be enabled in your `Cargo.toml`.
+
+```rust
+use gotenberg_pdf::{StreamingClient, WebOptions};
+use futures::StreamExt; // for `next()`
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = StreamingClient::new("http://localhost:3000");
+
+    let options = WebOptions::default();
+    let mut stream = client.pdf_from_url("https://example.com", options).await?;
+
+    // Create or overwrite the PDF file asynchronously
+    let temp_dir = std::env::temp_dir();
+    let pdf_path = temp_dir.join("example_com.pdf");
+    let mut file = File::create(pdf_path).await?;
+
+    // As we receive chunks, write them directly to disk
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        file.write_all(&chunk).await?;
+    }
+
+    println!("PDF rendered and saved as example_com.pdf");
+    Ok(())
+}
+```
+
 ## Configuration Options
 
 ### [`WebOptions`]

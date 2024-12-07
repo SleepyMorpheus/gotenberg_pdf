@@ -7,13 +7,19 @@ mod client;
 mod page_range;
 mod paper_format;
 
+#[cfg(feature = "stream")]
+mod streaming_client;
+
+#[cfg(feature = "stream")]
+pub use crate::streaming_client::StreamingClient;
+
 pub use crate::paper_format::*;
 /// Re-exported from the `bytes` crate (See [`bytes::Bytes`]).
 pub use bytes::Bytes;
 pub use client::*;
 pub use page_range::*;
 use reqwest::multipart;
-use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
+use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
@@ -21,6 +27,9 @@ use std::str::FromStr;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(all(test, feature = "stream"))]
+mod streaming_tests;
 
 /// Error type for the Gotenberg API.
 #[derive(Debug)]

@@ -1,20 +1,21 @@
 use super::*;
+use futures::Stream;
 use reqwest::multipart;
-use reqwest::{Client as ReqwestClient, Response};
+use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
-/// Gotenberg API client.
+/// Gotenberg Streaming API client. Available with the `streaming` feature enabled.
 #[derive(Clone)]
-pub struct Client {
+pub struct StreamingClient {
     client: ReqwestClient,
     base_url: String,
     username: Option<String>,
     password: Option<String>,
 }
 
-impl Drop for Client {
+impl Drop for StreamingClient {
     fn drop(&mut self) {
         // Securely zeroize the username and password
         #[cfg(feature = "zeroize")]
@@ -29,22 +30,22 @@ impl Drop for Client {
     }
 }
 
-impl Debug for Client {
+impl Debug for StreamingClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Client")
+        f.debug_struct("StreamingClient")
             .field("base_url", &self.base_url)
             .field("username", &self.username)
             .finish()
     }
 }
 
-impl Client {
+impl StreamingClient {
     /// Create a new instance of the API client.
     pub fn new(base_url: &str) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
-        Client {
+        StreamingClient {
             client: ReqwestClient::new(),
             base_url: base_url.to_string(),
             username: None,
@@ -58,7 +59,7 @@ impl Client {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
-        Client {
+        StreamingClient {
             client: ReqwestClient::new(),
             base_url: base_url.to_string(),
             username: Some(username.to_string()),
@@ -66,7 +67,40 @@ impl Client {
         }
     }
 
+    async fn post_stream(
+        &self,
+        endpoint: &str,
+        form: multipart::Form,
+        trace: Option<String>,
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+        let url = format!("{}/{}", self.base_url, endpoint);
+
+        let mut req = self.client.post(&url).multipart(form);
+
+        if let Some(trace) = trace {
+            req = req.header("Gotenberg-Trace", trace);
+        }
+
+        if let (Some(username), Some(password)) = (&self.username, &self.password) {
+            req = req.basic_auth(username, Some(password));
+        }
+
+        let response = req.send().await.map_err(Into::into)?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(Error::RenderingError(format!(
+                "Failed to render PDF: {} - {}",
+                status, body
+            )));
+        }
+
+        Ok(response.bytes_stream())
+    }
+
     /// Generic POST method that takes a multipart form and sends it.
+    /// Used for utility methods that don't require streaming.
     async fn post(
         &self,
         endpoint: &str,
@@ -100,26 +134,37 @@ impl Client {
     }
 
     /// Convert a URL to a PDF using the Chromium engine.
-    pub async fn pdf_from_url(&self, url: &str, options: WebOptions) -> Result<Bytes, Error> {
+    pub async fn pdf_from_url(
+        &self,
+        url: &str,
+        options: WebOptions,
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
         let form = options.fill_form(form);
-        self.post("forms/chromium/convert/url", form, trace).await
+
+        self.post_stream("forms/chromium/convert/url", form, trace)
+            .await
     }
 
     /// Convert HTML to a PDF using the Chromium engine.
-    pub async fn pdf_from_html(&self, html: &str, options: WebOptions) -> Result<Bytes, Error> {
+    pub async fn pdf_from_html(
+        &self,
+        html: &str,
+        options: WebOptions,
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
-
-        let form = multipart::Form::new();
         let file_bytes = html.to_string().into_bytes();
         let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-        let form = form.part("index.html", part);
+
+        let form = multipart::Form::new().part("index.html", part);
         let form = options.fill_form(form);
-        self.post("forms/chromium/convert/html", form, trace).await
+
+        self.post_stream("forms/chromium/convert/html", form, trace)
+            .await
     }
 
     /// Convert Markdown to a PDF using the Chromium engine.
@@ -145,38 +190,31 @@ impl Client {
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: WebOptions,
-    ) -> Result<Bytes, Error> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
 
-        let form = multipart::Form::new();
-
         let file_bytes = html_template.to_string().into_bytes();
-        let part = multipart::Part::bytes(file_bytes)
+        let html_part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-        let form = form.part("index.html", part);
-        let form = options.fill_form(form);
 
-        let form = {
-            let mut form = form;
-            for (filename, content) in markdown {
-                if !filename.ends_with(".md") {
-                    return Err(Error::FilenameError(
-                        "Markdown filename must end with '.md'".to_string(),
-                    ));
-                }
-                let file_bytes = content.to_string().into_bytes();
-                let part = multipart::Part::bytes(file_bytes)
-                    .file_name(filename.to_string())
-                    .mime_str("text/markdown")
-                    .unwrap();
-                form = form.part(filename.to_string(), part);
+        let mut form = multipart::Form::new().part("index.html", html_part);
+        for (filename, content) in markdown {
+            if !filename.ends_with(".md") {
+                return Err(Error::FilenameError(
+                    "Markdown filename must end with '.md'".to_string(),
+                ));
             }
-            form
-        };
+            let part = multipart::Part::bytes(content.as_bytes().to_vec())
+                .file_name(filename.to_string())
+                .mime_str("text/markdown")
+                .unwrap();
+            form = form.part(filename.to_string(), part);
+        }
 
-        self.post("forms/chromium/convert/markdown", form, trace)
+        let form = options.fill_form(form);
+        self.post_stream("forms/chromium/convert/markdown", form, trace)
             .await
     }
 
@@ -185,11 +223,12 @@ impl Client {
         &self,
         url: &str,
         options: ScreenshotOptions,
-    ) -> Result<Bytes, Error> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
         let form = options.fill_form(form);
-        self.post("forms/chromium/screenshot/url", form, trace)
+
+        self.post_stream("forms/chromium/screenshot/url", form, trace)
             .await
     }
 
@@ -198,18 +237,18 @@ impl Client {
         &self,
         html: &str,
         options: ScreenshotOptions,
-    ) -> Result<Bytes, Error> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
-
-        let form = multipart::Form::new();
         let file_bytes = html.to_string().into_bytes();
         let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-        let form = form.part("index.html", part);
+
+        let form = multipart::Form::new().part("index.html", part);
         let form = options.fill_form(form);
-        self.post("forms/chromium/screenshot/html", form, trace)
+
+        self.post_stream("forms/chromium/screenshot/html", form, trace)
             .await
     }
 
@@ -219,38 +258,32 @@ impl Client {
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: ScreenshotOptions,
-    ) -> Result<Bytes, Error> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
 
-        let form = multipart::Form::new();
-
         let file_bytes = html_template.to_string().into_bytes();
-        let part = multipart::Part::bytes(file_bytes)
+        let html_part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-        let form = form.part("index.html", part);
+
+        let mut form = multipart::Form::new().part("index.html", html_part);
+        for (filename, content) in markdown {
+            if !filename.ends_with(".md") {
+                return Err(Error::FilenameError(
+                    "Markdown filename must end with '.md'".to_string(),
+                ));
+            }
+            let part = multipart::Part::bytes(content.as_bytes().to_vec())
+                .file_name(filename.to_string())
+                .mime_str("text/markdown")
+                .unwrap();
+            form = form.part(filename.to_string(), part);
+        }
+
         let form = options.fill_form(form);
 
-        let form = {
-            let mut form = form;
-            for (filename, content) in markdown {
-                if !filename.ends_with(".md") {
-                    return Err(Error::FilenameError(
-                        "Markdown filename must end with '.md'".to_string(),
-                    ));
-                }
-                let file_bytes = content.to_string().into_bytes();
-                let part = multipart::Part::bytes(file_bytes)
-                    .file_name(filename.to_string())
-                    .mime_str("text/markdown")
-                    .unwrap();
-                form = form.part(filename.to_string(), part);
-            }
-            form
-        };
-
-        self.post("forms/chromium/screenshot/markdown", form, trace)
+        self.post_stream("forms/chromium/screenshot/markdown", form, trace)
             .await
     }
 
@@ -274,14 +307,15 @@ impl Client {
         filename: &str,
         bytes: Vec<u8>,
         options: DocumentOptions,
-    ) -> Result<Bytes, Error> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
         let trace = options.trace_id.clone();
 
-        let form = multipart::Form::new();
         let part = multipart::Part::bytes(bytes).file_name(filename.to_string());
-        let form = form.part("files", part);
+        let form = multipart::Form::new().part("files", part);
         let form = options.fill_form(form);
-        self.post("forms/libreoffice/convert", form, trace).await
+
+        self.post_stream("forms/libreoffice/convert", form, trace)
+            .await
     }
 
     /// Transforms a PDF file into the requested PDF/A format and/or PDF/UA.
@@ -290,15 +324,18 @@ impl Client {
         pdf_bytes: Vec<u8>,
         pdfa: Option<PDFFormat>,
         pdfua: bool,
-    ) -> Result<Bytes, Error> {
-        let form = multipart::Form::new();
-        let part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
-        let mut form = form.part("file.pdf", part);
+    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+        let pdf_part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
+        let mut form = multipart::Form::new().part("file.pdf", pdf_part);
+
         if let Some(pdfa) = pdfa {
             form = form.text("pdfa", pdfa.to_string());
         }
-        let form = form.text("pdfua", pdfua.to_string());
-        self.post("forms/pdfengines/convert", form, None).await
+
+        form = form.text("pdfua", pdfua.to_string());
+
+        self.post_stream("forms/pdfengines/convert", form, None)
+            .await
     }
 
     /// Read the metadata of a PDF file
