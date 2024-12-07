@@ -20,11 +20,11 @@ jobs:
     - name: Start Gotenberg Docker container
       run: docker run -d -p 3000:3000 gotenberg/gotenberg:8
 
-    # Step to wait for any HTTP response from Gotenberg
+    # Step to verify Gotenberg container is reachable
     - name: Check Gotenberg container is reachable
       run: |
         for i in {1..10}; do
-          if curl --silent --head --fail http://localhost:3000/; then
+          if curl --silent --head http://localhost:3000/; then
             echo "Gotenberg is reachable!";
             exit 0;
           fi
