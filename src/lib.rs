@@ -1,5 +1,8 @@
 #![doc = include_str!("../README.md")]
 
+/// Gotenberg server health status. See [`Client::health_check`].
+pub mod health;
+
 mod page_range;
 mod paper_format;
 pub use crate::paper_format::*;
@@ -293,14 +296,48 @@ impl Client {
         let form = options.fill_form(form);
         self.post("forms/libreoffice/convert", form, trace).await
     }
+
+    /// Get the health status of the Gotenberg server.
+    pub async fn health_check(&self) -> Result<health::Health, Error> {
+        let url = format!("{}/health", self.base_url);
+        let response = self.client.get(&url).send().await.map_err(Into::into)?;
+        let body = response.text().await.map_err(Into::into)?;
+        serde_json::from_str(&body)
+            .map_err(|e| Error::ParseError("Health".to_string(), body, e.to_string()))
+    }
+
+    /// Get the version of the Gotenberg server.
+    pub async fn version(&self) -> Result<String, Error> {
+        let url = format!("{}/version", self.base_url);
+        let response = self.client.get(&url).send().await.map_err(Into::into)?;
+        let body = response.text().await.map_err(Into::into)?;
+        Ok(body)
+    }
+
+    /// Get the metrics of the Gotenberg server in prometheus format.
+    /// The results will not be parsed and are returned as a multi-line string.
+    ///
+    /// By default the namespace is `gotenberg`, but this can be changed by passing --prometheus-namespace to the Gotenberg server.
+    ///
+    /// - `{namespace}_chromium_requests_queue_size`    Current number of Chromium conversion requests waiting to be treated.
+    /// - `{namespace}_chromium_restarts_count`	        Current number of Chromium restarts.
+    /// - `{namespace}_libreoffice_requests_queue_size`	Current number of LibreOffice conversion requests waiting to be treated.
+    /// - `{namespace}_libreoffice_restarts_count`	    Current number of LibreOffice restarts.
+    pub async fn metrics(&self) -> Result<String, Error> {
+        let url = format!("{}/prometheus/metrics", self.base_url);
+        let response = self.client.get(&url).send().await.map_err(Into::into)?;
+        let body = response.text().await.map_err(Into::into)?;
+        Ok(body)
+    }
 }
 
+/// Error type for the Gotenberg API.
 #[derive(Debug)]
 pub enum Error {
     /// Filename Error
     FilenameError(String),
 
-    /// Error communicating with the guotenberg server.
+    /// Error communicating with the gotenberg server.
     CommunicationError(ReqwestError),
 
     /// PDF rendering error.

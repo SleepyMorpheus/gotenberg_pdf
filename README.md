@@ -208,7 +208,7 @@ Provides control over the PDF generation process from the Chrome engine. These o
 | footer_html                         | HTML for footer content                          | None            |
 | wait_delay                          | Delay before conversion                          | None            |
 | wait_for_expression                 | Wait until this JS expression returns true       | None            |
-| emulated_media_type                 | Emulated media type ("screen" or "print")        | print           |
+| emulated_media_type                 | Emulated [`MediaType`] ("screen" or "print")     | print           |
 | cookies                             | Cookies for Chromium                             | None            |
 | skip_network_idle_events            | Ignore network idle events                       | true            |
 | user_agent                          | Override default User-Agent header               | None            |
@@ -243,7 +243,7 @@ Provides control over the screenshot generation process from the Chrome engine. 
 | optimize_for_speed                  | Optimize image encoding for speed                | false           |
 | wait_delay                          | Delay before taking screenshot                   | None            |
 | wait_for_expression                 | Wait until this JS expression returns true       | None            |
-| emulated_media_type                 | Emulated media type as a [MediaType]             | print           |
+| emulated_media_type                 | Emulated [`MediaType`] ("screen" or "print")     | print           |
 | cookies                             | Cookies for Chromium                             | None            |
 | skip_network_idle_events            | Ignore network idle events                       | true            |
 | user_agent                          | Override default User-Agent header               | None            |
