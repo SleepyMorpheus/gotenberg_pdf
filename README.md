@@ -7,13 +7,21 @@
 
 Gotenberg is a docker-based service for converting HTML, Markdown, URLs, and various documents to PDFs. It uses the Chrome engine to render web content to PDF and the LibreOffice engine to convert documents.
 
+## Features
+
+- **URL to PDF**: Generate PDFs directly from a webpage URL.
+- **HTML to PDF**: Convert raw HTML into a PDF.
+- **Markdown to PDF**: Render Markdown files into a PDF.
+- **Document to PDF**: Convert various document formats (e.g., DOCX, PPTX) to PDF using the LibreOffice engine.
+- **Screenshot**: Capture screenshots of webpages or HTML content.
+
 ## Installation
 
 Add `gotenberg_pdf` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gotenberg_pdf = "0.1.0"  # Replace with the latest version
+gotenberg_pdf = "0.1"
 ```
 
 Ensure you have a running instance of Gotenberg, typically via Docker:
@@ -21,6 +29,8 @@ Ensure you have a running instance of Gotenberg, typically via Docker:
 ```sh
 docker run --rm -p 3000:3000 gotenberg/gotenberg:8
 ```
+
+**N.B.**: This crate is compatible with Gotenberg version 8.
 
 ## Usage Examples
 
