@@ -3,14 +3,9 @@
 [![crates.io](https://img.shields.io/crates/v/gotenberg_pdf.svg)](https://crates.io/crates/gotenberg_pdf)
 [![docs.rs](https://img.shields.io/badge/docs.rs-gotenberg_pdf-green)](https://docs.rs/gotenberg_pdf)
 
-**`gotenberg_pdf`** is a Rust library that provides an easy-to-use interface for interacting with the [Gotenberg API](https://gotenberg.dev/). Use this library to convert URLs, HTML, or Markdown to PDF with highly customizable options.
+**`gotenberg_pdf`** is a Rust library that provides an easy-to-use interface for interacting with the [Gotenberg API](https://gotenberg.dev/).
 
-## Features
-
-- **URL to PDF**: Generate PDFs directly from a webpage URL.
-- **HTML to PDF**: Convert raw HTML into a PDF.
-- **Markdown to PDF**: Render Markdown files into a PDF using an HTML template.
-- **Customizable Options**: Configure PDF rendering with paper size, margins, headers/footers, and more.
+Gotenberg is a docker-based service for converting HTML, Markdown, URLs, and various documents to PDFs. It uses the Chrome engine to render web content to PDF and the LibreOffice engine to convert documents.
 
 ## Installation
 
