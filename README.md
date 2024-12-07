@@ -166,18 +166,18 @@ async fn main() {
     options.height = Some(600);
     options.format = Some(ImageFormat::Png);
 
-    let image_bytes = client.screenhot_html(html_content, options).await.unwrap();
+    let image_bytes = client.screenshot_html(html_content, options).await.unwrap();
 }
 ```
 
 ## Configuration Options
 
-### `WebOptions`
+### [`WebOptions`]
 
 Provides control over the PDF generation process from the Chrome engine. These options can be passed to the following methods:
-   - `Client::pdf_from_url`
-   - `Client::pdf_from_html`
-   - `Client::pdf_from_markdown`
+   - [`Client::pdf_from_url`]
+   - [`Client::pdf_from_html`]
+   - [`Client::pdf_from_markdown`]
 
 | Field Name                          | Description                                      | Default         |
 |-------------------------------------|--------------------------------------------------|-----------------|
@@ -213,15 +213,15 @@ Provides control over the PDF generation process from the Chrome engine. These o
 | fail_on_resource_loading_failed     | Fail if resource loading fails                   | false           |
 | fail_on_console_exceptions          | Fail on Chromium console exceptions              | None            |
 
-Includes the `set_paper_format(format: PaperFormat)` utlity method for common paper sizes.
+Includes the [`WebOptions::set_paper_format`] utlity method for common paper sizes.
 
 
-### `ScreenshotOptions`
+### [`ScreenshotOptions`]
 
 Provides control over the screenshot generation process from the Chrome engine. These options can be passed to the following method:
-   - `Client::screenshot_from_url`
-   - `Client::screenshot_from_html`
-   - `Client::screenshot_from_markdown`
+   - [`Client::screenshot_url`]
+   - [`Client::screenshot_html`]
+   - [`Client::screenshot_markdown`]
 
 | Field Name                          | Description                                      | Default         |
 |-------------------------------------|--------------------------------------------------|-----------------|
@@ -246,13 +246,10 @@ Provides control over the screenshot generation process from the Chrome engine. 
 | fail_on_console_exceptions          | Fail on Chromium console exceptions              | None            |
 
 
-
-### `DocumentOptions`
+### [`DocumentOptions`]
 
 Provides control over the document generation process from the Chrome engine. These options can be passed to the following method:
-   - `Client::document_from_url`
-   - `Client::document_from_html`
-   - `Client::document_from_markdown`
+   - [`Client::pdf_from_doc`]
 
 | Field Name                          | Description                                      | Default         |
 |-------------------------------------|--------------------------------------------------|-----------------|
@@ -289,5 +286,3 @@ By default there is no support for HTTPS or HTTP/2. If you need these features, 
  - `rustls-tls` - Enables TLS / HTTPS support using the `rustls` library.
  - `native-tls` - Enables TLS / HTTPS support using the native system TLS library.
  - `http2` - Enables HTTP/2 support. Use this if you need to post data larger than 32MB.
-
-By default we include the `auth` feature, which allows you to add basic authentication to your requests. If you don't need this feature, you can disable it by adding `no-default-features = true` to your `Cargo.toml`:

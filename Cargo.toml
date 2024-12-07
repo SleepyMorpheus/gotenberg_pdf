@@ -15,11 +15,10 @@ serde_json = "1.0"
 zeroize = { version = "1.8", optional = true }
 
 [features]
-default = ["auth"]
+default = ["zeroize"]
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 http2 = ["reqwest/http2"]
-auth = ["zeroize"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

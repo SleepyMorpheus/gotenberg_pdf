@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::str::FromStr;
+
+#[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
 /// Gotenberg API client.
@@ -23,7 +25,7 @@ pub struct Client {
 impl Drop for Client {
     fn drop(&mut self) {
         // Securely zeroize the username and password
-        #[cfg(feature = "auth")]
+        #[cfg(feature = "zeroize")]
         {
             if let Some(username) = &mut self.username {
                 username.zeroize();
@@ -60,7 +62,6 @@ impl Client {
 
     /// Create a new instance of the API client with basic auth.
     /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
-    #[cfg(feature = "auth")]
     pub fn new_with_auth(base_url: &str, username: &str, password: &str) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
@@ -201,7 +202,7 @@ impl Client {
     }
 
     /// Take a screenshot of an HTML page using the Chromium engine.
-    pub async fn screenhot_html(
+    pub async fn screenshot_html(
         &self,
         html: &str,
         options: ScreenshotOptions,
