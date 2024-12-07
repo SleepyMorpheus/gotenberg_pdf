@@ -191,35 +191,35 @@ Provides control over the PDF generation process from the Chrome engine. These o
 |-------------------------------------|--------------------------------------------------|-----------------|
 | trace_id                            | Unique trace ID for request                      | Random UUID     |
 | single_page                         | Print content on one page                        | false           |
-| paper_width                         | Paper width in various units                     | 8.5 inches      |
-| paper_height                        | Paper height in various units                    | 11 inches       |
-| margin_top                          | Top margin in various units                      | 0.39 inches     |
-| margin_bottom                       | Bottom margin in various units                   | 0.39 inches     |
-| margin_left                         | Left margin in various units                     | 0.39 inches     |
-| margin_right                        | Right margin in various units                    | 0.39 inches     |
+| paper_width                         | Paper width as a [LinearDimention]               | 8.5 inches      |
+| paper_height                        | Paper height as a [LinearDimention]              | 11 inches       |
+| margin_top                          | Top margin as a [LinearDimention]                | 0.39 inches     |
+| margin_bottom                       | Bottom margin as a [LinearDimention]             | 0.39 inches     |
+| margin_left                         | Left margin as a [LinearDimention]               | 0.39 inches     |
+| margin_right                        | Right margin as a [LinearDimention]              | 0.39 inches     |
 | prefer_css_page_size                | Use CSS-defined page size                        | false           |
 | generate_document_outline           | Embed document outline                           | false           |
 | print_background                    | Include background graphics                      | false           |
 | omit_background                     | Allow transparency in PDF                        | false           |
 | landscape                           | Set page orientation to landscape                | false           |
 | scale                               | Scale of page rendering                          | 1.0             |
-| native_page_ranges                  | Page ranges to print, eg `1,3,5`, `1-4`          | All pages       |
+| native_page_ranges                  | [`PageRange`] to print, eg `"1,3,5"`, `"1-4'`    | All pages       |
 | header_html                         | HTML for header content                          | None            |
 | footer_html                         | HTML for footer content                          | None            |
 | wait_delay                          | Delay before conversion                          | None            |
-| wait_for_expression                 | JavaScript expression to wait for before convert | None            |
+| wait_for_expression                 | Wait until this JS expression returns true       | None            |
 | emulated_media_type                 | Emulated media type ("screen" or "print")        | print           |
 | cookies                             | Cookies for Chromium                             | None            |
 | skip_network_idle_events            | Ignore network idle events                       | true            |
 | user_agent                          | Override default User-Agent header               | None            |
 | extra_http_headers                  | Additional HTTP headers                          | None            |
-| pdfa                                | Convert to specific PDF/A format                 | None            |
-| pdfua                               | Enable Universal Access compliance               | None            |
+| pdfa                                | Convert to specific PDF/A [PDFFormat]            | None            |
+| pdfua                               | Enable Universal Access compliance               | false           |
 | metadata                            | PDF metadata                                     | None            |
 | fail_on_http_status_codes           | HTTP status codes to fail on, 99's are wild      | [499, 599]      |
 | fail_on_resource_http_status_codes  | Resource HTTP status codes to fail on            | None            |
 | fail_on_resource_loading_failed     | Fail if resource loading fails                   | false           |
-| fail_on_console_exceptions          | Fail on Chromium console exceptions              | None            |
+| fail_on_console_exceptions          | Fail on Chromium console exceptions              | false           |
 
 Includes the [`WebOptions::set_paper_format`] utlity method for common paper sizes.
 
@@ -237,13 +237,13 @@ Provides control over the screenshot generation process from the Chrome engine. 
 | width                               | Device screen width in pixels                    | 800             |
 | height                              | Device screen height in pixels                   | 600             |
 | clip                                | Clip screenshot to device dimensions             | false           |
-| format                              | Image format ("png", "jpeg", "webp")             | png             |
+| format                              | Image format as an [ImageFormat]                 | png             |
 | quality                             | Compression quality (jpeg only, 0-100)           | 100             |
 | omit_background                     | Generate screenshot with transparency            | false           |
 | optimize_for_speed                  | Optimize image encoding for speed                | false           |
 | wait_delay                          | Delay before taking screenshot                   | None            |
-| wait_for_expression                 | JavaScript expression to wait for                | None            |
-| emulated_media_type                 | Emulated media type ("screen" or "print")        | print           |
+| wait_for_expression                 | Wait until this JS expression returns true       | None            |
+| emulated_media_type                 | Emulated media type as a [MediaType]             | print           |
 | cookies                             | Cookies for Chromium                             | None            |
 | skip_network_idle_events            | Ignore network idle events                       | true            |
 | user_agent                          | Override default User-Agent header               | None            |
@@ -264,7 +264,7 @@ Provides control over the document generation process from the Chrome engine. Th
 | trace_id                            | Unique trace ID for request                      | Random UUID            |
 | password                            | Password for opening the source file             | None            |
 | landscape                           | Set paper orientation to landscape               | false           |
-| native_page_ranges                  | Page ranges to print, eg `1,2,3` or `1-4`        | All pages       |
+| native_page_ranges                  | [`PageRange`] to print, eg `"1,2,3"` or `"1-4"`  | All pages       |
 | export_form_fields                  | Export form fields as widgets                    | true            |
 | allow_duplicate_field_names         | Allow duplicate field names in form fields       | false           |
 | export_bookmarks                    | Export bookmarks to PDF                          | true            |
@@ -284,8 +284,8 @@ Provides control over the document generation process from the Chrome engine. Th
 | quality                             | JPG export quality (1-100)                       | 90              |
 | reduce_image_resolution             | Reduce image resolution                          | false           |
 | max_image_resolution                | Max resolution DPI. 75, 150, 300, 600 or 1200    | 300             |
-| pdfa                                | Convert to specific PDF/A format                 | None            |
-| pdfua                               | Enable Universal Access compliance               | None            |
+| pdfa                                | Convert to specific PDF/A [PDFFormat]            | None            |
+| pdfua                               | Enable Universal Access compliance               | false           |
 
 ## Features
 

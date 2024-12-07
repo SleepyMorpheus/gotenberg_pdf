@@ -1,3 +1,4 @@
+use super::Error;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
@@ -17,7 +18,15 @@ pub enum PaperFormat {
     Tabloid,
 }
 
-/// Linear dimention, for example `11.7in`, `33.1cm`, `50px`
+/// Linear dimention, allowed units are `mm`, `cm`, `in`, `px`, `pt`, `pc`. Default unit is `in`.
+///
+/// Example:
+/// ```rust
+/// use gotenberg_pdf::LinearDimention;
+///
+/// let width: LinearDimention = "11.7in".parse().unwrap();
+/// let height: LinearDimention = "8.27in".parse().unwrap();
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinearDimention {
     size: f64,
@@ -36,11 +45,22 @@ impl LinearDimention {
 /// Unit of the linear dimention, for example `mm`, `cm`, `in`, `px`, `pt`, `pc`
 #[derive(Debug, Clone, PartialEq)]
 pub enum Unit {
+    /// Millimeter
     Mm,
+
+    /// Centimeter
     Cm,
+
+    /// Inch
     In,
+
+    /// Pixel
     Px,
+
+    /// Point
     Pt,
+
+    /// Pica
     Pc,
 }
 
@@ -59,13 +79,15 @@ impl fmt::Display for LinearDimention {
 }
 
 impl FromStr for LinearDimention {
-    type Err = String;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let size = s.trim_end_matches(|c: char| !c.is_digit(10) && c != '.');
         let unit = s.trim_start_matches(|c: char| c.is_digit(10) || c == '.');
 
-        let size = size.parse::<f64>().map_err(|_| "Invalid size")?;
+        let size = size.parse::<f64>().map_err(|e| {
+            Error::ParseError("LinearDimention".to_string(), s.to_string(), e.to_string())
+        })?;
         let unit = match unit {
             "mm" => Some(Unit::Mm),
             "cm" => Some(Unit::Cm),
@@ -74,7 +96,13 @@ impl FromStr for LinearDimention {
             "pt" => Some(Unit::Pt),
             "pc" => Some(Unit::Pc),
             "" => None,
-            _ => return Err("Invalid unit".to_string()),
+            _ => {
+                return Err(Error::ParseError(
+                    "LinearDimention".to_string(),
+                    s.to_string(),
+                    "Invalid Unit".to_string(),
+                ))
+            }
         };
 
         Ok(LinearDimention { size, unit })
@@ -134,7 +162,7 @@ impl fmt::Display for PaperFormat {
 }
 
 impl FromStr for PaperFormat {
-    type Err = String;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -149,7 +177,11 @@ impl FromStr for PaperFormat {
             "Legal" => Ok(PaperFormat::Legal),
             "Letter" => Ok(PaperFormat::Letter),
             "Tabloid" => Ok(PaperFormat::Tabloid),
-            _ => Err("Invalid paper format".to_string()),
+            _ => Err(Error::ParseError(
+                "PaperFormat".to_string(),
+                s.to_string(),
+                "Invalid Paper Format".to_string(),
+            )),
         }
     }
 }
@@ -184,20 +216,20 @@ mod tests {
     #[test]
     fn test_paper_size_from_str_valid() {
         assert_eq!(
-            "11.7in".parse::<LinearDimention>(),
-            Ok(LinearDimention::new(11.7, Unit::In))
+            "11.7in".parse::<LinearDimention>().unwrap(),
+            LinearDimention::new(11.7, Unit::In)
         );
         assert_eq!(
-            "33.1cm".parse::<LinearDimention>(),
-            Ok(LinearDimention::new(33.1, Unit::Cm))
+            "33.1cm".parse::<LinearDimention>().unwrap(),
+            LinearDimention::new(33.1, Unit::Cm)
         );
         assert_eq!(
-            "5.83in".parse::<LinearDimention>(),
-            Ok(LinearDimention::new(5.83, Unit::In))
+            "5.83in".parse::<LinearDimention>().unwrap(),
+            LinearDimention::new(5.83, Unit::In)
         );
         assert_eq!(
-            "5in".parse::<LinearDimention>(),
-            Ok(LinearDimention::new(5.0, Unit::In))
+            "5in".parse::<LinearDimention>().unwrap(),
+            LinearDimention::new(5.0, Unit::In)
         );
     }
 
@@ -218,8 +250,11 @@ mod tests {
 
     #[test]
     fn test_paper_format_from_str_valid() {
-        assert_eq!("A4".parse::<PaperFormat>(), Ok(PaperFormat::A4));
-        assert_eq!("Ledger".parse::<PaperFormat>(), Ok(PaperFormat::Ledger));
+        assert_eq!("A4".parse::<PaperFormat>().unwrap(), PaperFormat::A4);
+        assert_eq!(
+            "Ledger".parse::<PaperFormat>().unwrap(),
+            PaperFormat::Ledger
+        );
     }
 
     #[test]

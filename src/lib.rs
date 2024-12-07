@@ -1,8 +1,10 @@
 #![doc = include_str!("../README.md")]
 
+mod page_range;
 mod paper_format;
 pub use crate::paper_format::*;
 use bytes::Bytes;
+pub use page_range::*;
 use reqwest::multipart;
 use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 use serde::{Deserialize, Serialize};
@@ -298,16 +300,48 @@ pub enum Error {
     /// Filename Error
     FilenameError(String),
 
-    /// Error commmuniction with the guotenberg server.
+    /// Error communicating with the guotenberg server.
     CommunicationError(ReqwestError),
 
     /// PDF rendering error.
     RenderingError(String),
+
+    /// Error parsing a string into a type
+    // (Type, Subject, Message)
+    ParseError(String, String, String),
 }
 
 impl Into<Error> for ReqwestError {
     fn into(self) -> Error {
         Error::CommunicationError(self)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::FilenameError(e) => write!(f, "gotenberg_pdf: Filename Error: {}", e),
+            Error::CommunicationError(e) => write!(
+                f,
+                "gotenberg_pdf: Error communicating with the guotenberg server: {}",
+                e
+            ),
+            Error::RenderingError(e) => {
+                write!(f, "gotenberg_pdf: PDF / Image Rendering Error: {}", e)
+            }
+            Error::ParseError(t, s, e) => {
+                write!(f, "gotenberg_pdf: Error Parsing {} from `{}`: {}", t, s, e)
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::CommunicationError(e) => Some(e),
+            _ => None,
+        }
     }
 }
 
@@ -373,7 +407,7 @@ pub struct WebOptions {
 
     /// Page ranges to print, e.g., '1-5, 8, 11-13' - empty means all pages.
     /// Default: `All pages`
-    pub native_page_ranges: Option<String>,
+    pub native_page_ranges: Option<PageRange>,
 
     /// HTML content containing the header.
     ///
@@ -530,7 +564,7 @@ impl WebOptions {
         }
 
         if let Some(native_page_ranges) = self.native_page_ranges {
-            form = form.text("nativePageRanges", native_page_ranges);
+            form = form.text("nativePageRanges", native_page_ranges.to_string());
         }
 
         if let Some(header_html) = self.header_html {
@@ -823,7 +857,7 @@ pub struct DocumentOptions {
     pub landscape: Option<bool>,
 
     /// Page ranges to print, e.g., '1-4' - empty means all pages. default: All pages
-    pub native_page_ranges: Option<String>,
+    pub native_page_ranges: Option<PageRange>,
 
     /// Specify whether form fields are exported as widgets or only their fixed print representation is exported. default: true
     pub export_form_fields: Option<bool>,
@@ -903,7 +937,7 @@ impl DocumentOptions {
         }
 
         if let Some(native_page_ranges) = self.native_page_ranges {
-            form = form.text("nativePageRanges", native_page_ranges);
+            form = form.text("nativePageRanges", native_page_ranges.to_string());
         }
 
         if let Some(export_form_fields) = self.export_form_fields {
@@ -1083,14 +1117,18 @@ impl fmt::Display for PDFFormat {
 }
 
 impl FromStr for PDFFormat {
-    type Err = String;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "PDF/A-1b" => Ok(PDFFormat::A1b),
             "PDF/A-2b" => Ok(PDFFormat::A2b),
             "PDF/A-3b" => Ok(PDFFormat::A3b),
-            _ => Err("Invalid PDF format".to_string()),
+            _ => Err(Error::ParseError(
+                "PDFFormat".to_string(),
+                s.to_string(),
+                "Invalid PDF format".to_string(),
+            )),
         }
     }
 }
@@ -1128,18 +1166,23 @@ impl fmt::Display for ImageFormat {
 }
 
 impl FromStr for ImageFormat {
-    type Err = String;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "png" => Ok(ImageFormat::Png),
             "jpeg" => Ok(ImageFormat::Jpeg),
             "webp" => Ok(ImageFormat::Webp),
-            _ => Err("Invalid image format".to_string()),
+            _ => Err(Error::ParseError(
+                "ImageFormat".to_string(),
+                s.to_string(),
+                "Invalid image format".to_string(),
+            )),
         }
     }
 }
 
+/// Media type, either "print" or "screen".
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MediaType {
     #[serde(rename = "screen")]
@@ -1167,13 +1210,17 @@ impl fmt::Display for MediaType {
 }
 
 impl FromStr for MediaType {
-    type Err = String;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "screen" => Ok(MediaType::Screen),
             "print" => Ok(MediaType::Print),
-            _ => Err("Invalid media type".to_string()),
+            _ => Err(Error::ParseError(
+                "MediaType".to_string(),
+                s.to_string(),
+                "Invalid media type".to_string(),
+            )),
         }
     }
 }
