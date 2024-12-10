@@ -291,7 +291,7 @@ Provides control over the screenshot generation process from the Chrome engine. 
 
 ### [`DocumentOptions`]
 
-Provides control over the document generation process from the Chrome engine. These options can be passed to the following method:
+Provides control over the document generation process from the LibreOffice engine. These options can be passed to the following method:
    - [`Client::pdf_from_doc`]
 
 | Field Name                          | Description                                      | Default         |
