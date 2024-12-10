@@ -83,7 +83,7 @@ impl std::error::Error for Error {
 }
 
 /// Configuration for rendering PDF from web content using the Chromium engine.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WebOptions {
     /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
@@ -401,7 +401,7 @@ impl WebOptions {
 }
 
 /// Options for taking a screenshot of a webpage.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScreenshotOptions {
     /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
     /// This trace will show up on the end server as a `Gotenberg-Trace` header.
@@ -581,7 +581,7 @@ impl ScreenshotOptions {
 }
 
 /// Options for converting a document to a PDF using the LibreOffice engine.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DocumentOptions {
     /// By default, the API assigns a unique UUID trace to every request. However, you also have the option to specify the trace for each request.
     /// This trace will show up on the end server as a `Gotenberg-Trace` header.
