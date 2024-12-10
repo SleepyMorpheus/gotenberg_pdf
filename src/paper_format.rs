@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
 /// Paper Format, A0 to A6, Ledger, Legal, Letter, Tabloid
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum PaperFormat {
     A0,
     A1,
@@ -43,7 +43,7 @@ impl LinearDimention {
 }
 
 /// Unit of the linear dimention, for example `mm`, `cm`, `in`, `px`, `pt`, `pc`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Unit {
     /// Millimeter
     Mm,

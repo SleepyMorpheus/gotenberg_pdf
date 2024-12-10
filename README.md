@@ -180,7 +180,7 @@ async fn main() {
 ```
 
 
-### Use the steaming client
+### Use the streaming client
 
 Requires the `stream` feature to be enabled in your `Cargo.toml`.
 

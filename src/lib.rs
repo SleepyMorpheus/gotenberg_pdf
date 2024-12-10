@@ -835,7 +835,7 @@ impl Cookie {
 /// If the SameSite attribute is “Strict”, then the cookie is never sent in cross-site requests.
 /// If the SameSite attribute is “Lax”, the cookie is only sent in cross-site requests with “safe” HTTP methods, i.e, GET, HEAD, OPTIONS, TRACE.
 /// If the SameSite attribute is “None”, the cookie is sent in all cross-site requests if the “Secure” flag is also set, otherwise the cookie is ignored.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum SameSite {
     Strict,
     Lax,
@@ -843,7 +843,7 @@ pub enum SameSite {
 }
 
 /// Supported PDF binary formats.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum PDFFormat {
     /// PDF/A-1: (ISO 19005-1:2005)
     #[serde(rename = "PDF/A-1b")]
@@ -892,7 +892,7 @@ impl FromStr for PDFFormat {
 }
 
 /// Image format to use when taking a screenshot.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ImageFormat {
     /// Portable Network Graphics (PNG)
     #[serde(rename = "png")]
@@ -941,7 +941,7 @@ impl FromStr for ImageFormat {
 }
 
 /// Media type, either "print" or "screen".
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum MediaType {
     #[serde(rename = "screen")]
     /// Screen media type.
