@@ -1,25 +1,24 @@
 use super::*;
-use futures::Stream;
-use reqwest::multipart;
-use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
+use reqwest::blocking::multipart;
+use reqwest::blocking::{Client as ReqwestClient, Response};
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
-/// Gotenberg Streaming API client. Available with the `stream` feature enabled.
+/// Gotenberg API blocking client. Available when the `blocking` feature is enabled.
 ///
 /// The client can be freely cloned and moved across threads.
 /// All clones use the same connection pool for connection re-use.
-#[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "blocking")))]
 #[derive(Clone)]
-pub struct StreamingClient {
+pub struct BlockingClient {
     client: ReqwestClient,
     base_url: String,
     username: Option<String>,
     password: Option<String>,
 }
 
-impl Drop for StreamingClient {
+impl Drop for BlockingClient {
     fn drop(&mut self) {
         // Securely zeroize the username and password
         #[cfg(feature = "zeroize")]
@@ -34,27 +33,27 @@ impl Drop for StreamingClient {
     }
 }
 
-impl Debug for StreamingClient {
+impl Debug for BlockingClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("StreamingClient")
+        f.debug_struct("BlockingClient")
             .field("base_url", &self.base_url)
             .field("username", &self.username)
             .finish()
     }
 }
 
-impl StreamingClient {
+impl BlockingClient {
     /// Create a new instance of the API client.
     pub fn new(base_url: &str) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
         let client = ReqwestClient::builder()
-            .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // 5 second less than the Gotenberg server's idle timeout
+            .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // 5 seconds less than the Gotenberg server's idle timeout
             .build()
             .unwrap();
 
-        Self {
+        BlockingClient {
             client,
             base_url: base_url.to_string(),
             username: None,
@@ -71,7 +70,7 @@ impl StreamingClient {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
-        Self {
+        BlockingClient {
             client,
             base_url: base_url.to_string(),
             username: None,
@@ -85,11 +84,10 @@ impl StreamingClient {
     /// # Example
     ///
     /// ```
-    /// use gotenberg_pdf::StreamingClient;
+    /// use gotenberg_pdf::BlockingClient;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///    let client = StreamingClient::new("http://localhost:3000").auth("username", "password");
+    /// fn main() {
+    ///    let client = BlockingClient::new("http://localhost:3000").auth("username", "password");
     ///
     ///   // Now you can use the client to make requests
     /// }
@@ -102,41 +100,8 @@ impl StreamingClient {
         client
     }
 
-    async fn post_stream(
-        &self,
-        endpoint: &str,
-        form: multipart::Form,
-        trace: Option<String>,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
-        let url = format!("{}/{}", self.base_url, endpoint);
-
-        let mut req = self.client.post(&url).multipart(form);
-
-        if let Some(trace) = trace {
-            req = req.header("Gotenberg-Trace", trace);
-        }
-
-        if let (Some(username), Some(password)) = (&self.username, &self.password) {
-            req = req.basic_auth(username, Some(password));
-        }
-
-        let response = req.send().await.map_err(Into::into)?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(Error::RenderingError(format!(
-                "Failed to render PDF: {} - {}",
-                status, body
-            )));
-        }
-
-        Ok(response.bytes_stream())
-    }
-
     /// Generic POST method that takes a multipart form and sends it.
-    /// Used for utility methods that don't require streaming.
-    async fn post(
+    fn post(
         &self,
         endpoint: &str,
         form: multipart::Form,
@@ -154,57 +119,46 @@ impl StreamingClient {
             req = req.basic_auth(username, Some(password));
         }
 
-        let response: Response = req.send().await.map_err(Into::into)?;
+        let response: Response = req.send().map_err(Into::into)?;
 
         if !response.status().is_success() {
             let status = response.status();
-            let body = response.text().await.unwrap_or_default();
+            let body = response.text().unwrap_or_default();
             return Err(Error::RenderingError(format!(
                 "Failed to render PDF: {} - {}",
                 status, body
             )));
         }
 
-        response.bytes().await.map_err(Into::into)
+        response.bytes().map_err(Into::into)
     }
 
     /// Convert a URL to a PDF using the Chromium engine.
-    pub async fn pdf_from_url(
-        &self,
-        url: &str,
-        options: WebOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    pub fn pdf_from_url(&self, url: &str, options: WebOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/chromium/convert/url", form, trace)
-            .await
+        let form = options.fill_form_blocking(form);
+        self.post("forms/chromium/convert/url", form, trace)
     }
 
     /// Convert HTML to a PDF using the Chromium engine.
-    pub async fn pdf_from_html(
-        &self,
-        html: &str,
-        options: WebOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    pub fn pdf_from_html(&self, html: &str, options: WebOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
+
+        let form = multipart::Form::new();
         let file_bytes = html.to_string().into_bytes();
         let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-
-        let form = multipart::Form::new().part("index.html", part);
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/chromium/convert/html", form, trace)
-            .await
+        let form = form.part("index.html", part);
+        let form = options.fill_form_blocking(form);
+        self.post("forms/chromium/convert/html", form, trace)
     }
 
     /// Convert Markdown to a PDF using the Chromium engine.
     ///
-    /// The HTML template should in the following format:
+    /// The HTML template should be in the following format:
     ///
     /// ```html
     /// <!doctype html>
@@ -220,106 +174,104 @@ impl StreamingClient {
     /// ```
     ///
     /// The markdown files should be in a "filename" => "content" format. The filename key string must end with `.md`.
-    pub async fn pdf_from_markdown(
+    pub fn pdf_from_markdown(
         &self,
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: WebOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
+        let form = multipart::Form::new();
         let file_bytes = html_template.to_string().into_bytes();
-        let html_part = multipart::Part::bytes(file_bytes)
+        let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
+        let form = form.part("index.html", part);
+        let form = options.fill_form_blocking(form);
 
-        let mut form = multipart::Form::new().part("index.html", html_part);
-        for (filename, content) in markdown {
-            if !filename.ends_with(".md") {
-                return Err(Error::FilenameError(
-                    "Markdown filename must end with '.md'".to_string(),
-                ));
+        let form = {
+            let mut form = form;
+            for (filename, content) in markdown {
+                if !filename.ends_with(".md") {
+                    return Err(Error::FilenameError(
+                        "Markdown filename must end with '.md'".to_string(),
+                    ));
+                }
+                let file_bytes = content.to_string().into_bytes();
+                let part = multipart::Part::bytes(file_bytes)
+                    .file_name(filename.to_string())
+                    .mime_str("text/markdown")
+                    .unwrap();
+                form = form.part(filename.to_string(), part);
             }
-            let part = multipart::Part::bytes(content.as_bytes().to_vec())
-                .file_name(filename.to_string())
-                .mime_str("text/markdown")
-                .unwrap();
-            form = form.part(filename.to_string(), part);
-        }
+            form
+        };
 
-        let form = options.fill_form(form);
-        self.post_stream("forms/chromium/convert/markdown", form, trace)
-            .await
+        self.post("forms/chromium/convert/markdown", form, trace)
     }
 
     /// Take a screenshot of a webpage using the Chromium engine.
-    pub async fn screenshot_url(
-        &self,
-        url: &str,
-        options: ScreenshotOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    pub fn screenshot_url(&self, url: &str, options: ScreenshotOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/chromium/screenshot/url", form, trace)
-            .await
+        let form = options.fill_form_blocking(form);
+        self.post("forms/chromium/screenshot/url", form, trace)
     }
 
     /// Take a screenshot of an HTML page using the Chromium engine.
-    pub async fn screenshot_html(
-        &self,
-        html: &str,
-        options: ScreenshotOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    pub fn screenshot_html(&self, html: &str, options: ScreenshotOptions) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
+
+        let form = multipart::Form::new();
         let file_bytes = html.to_string().into_bytes();
         let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
-
-        let form = multipart::Form::new().part("index.html", part);
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/chromium/screenshot/html", form, trace)
-            .await
+        let form = form.part("index.html", part);
+        let form = options.fill_form_blocking(form);
+        self.post("forms/chromium/screenshot/html", form, trace)
     }
 
     /// Take a screenshot of a set of markdown files using the Chromium engine.
-    pub async fn screenshot_markdown(
+    pub fn screenshot_markdown(
         &self,
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: ScreenshotOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
+        let form = multipart::Form::new();
         let file_bytes = html_template.to_string().into_bytes();
-        let html_part = multipart::Part::bytes(file_bytes)
+        let part = multipart::Part::bytes(file_bytes)
             .file_name("index.html")
             .mime_str("text/html")
             .unwrap();
+        let form = form.part("index.html", part);
+        let form = options.fill_form_blocking(form);
 
-        let mut form = multipart::Form::new().part("index.html", html_part);
-        for (filename, content) in markdown {
-            if !filename.ends_with(".md") {
-                return Err(Error::FilenameError(
-                    "Markdown filename must end with '.md'".to_string(),
-                ));
+        let form = {
+            let mut form = form;
+            for (filename, content) in markdown {
+                if !filename.ends_with(".md") {
+                    return Err(Error::FilenameError(
+                        "Markdown filename must end with '.md'".to_string(),
+                    ));
+                }
+                let file_bytes = content.to_string().into_bytes();
+                let part = multipart::Part::bytes(file_bytes)
+                    .file_name(filename.to_string())
+                    .mime_str("text/markdown")
+                    .unwrap();
+                form = form.part(filename.to_string(), part);
             }
-            let part = multipart::Part::bytes(content.as_bytes().to_vec())
-                .file_name(filename.to_string())
-                .mime_str("text/markdown")
-                .unwrap();
-            form = form.part(filename.to_string(), part);
-        }
+            form
+        };
 
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/chromium/screenshot/markdown", form, trace)
-            .await
+        self.post("forms/chromium/screenshot/markdown", form, trace)
     }
 
     /// Convert a document to a PDF using the LibreOffice engine.
@@ -337,44 +289,39 @@ impl StreamingClient {
     /// .wb2 .wk1 .wks .wmf .wpd .wpg .wps .xbm .xhtml .xls .xlsb .xlsm .xlsx .xlt
     /// .xltm .xltx .xlw .xml .xpm .zabw
     /// ```
-    pub async fn pdf_from_doc(
+    pub fn pdf_from_doc(
         &self,
         filename: &str,
         bytes: Vec<u8>,
         options: DocumentOptions,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
+    ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
-
+        let form = multipart::Form::new();
         let part = multipart::Part::bytes(bytes).file_name(filename.to_string());
-        let form = multipart::Form::new().part("files", part);
-        let form = options.fill_form(form);
-
-        self.post_stream("forms/libreoffice/convert", form, trace)
-            .await
+        let form = form.part("files", part);
+        let form = options.fill_form_blocking(form);
+        self.post("forms/libreoffice/convert", form, trace)
     }
 
     /// Transforms a PDF file into the requested PDF/A format and/or PDF/UA.
-    pub async fn convert_pdf(
+    pub fn convert_pdf(
         &self,
         pdf_bytes: Vec<u8>,
         pdfa: Option<PDFFormat>,
         pdfua: bool,
-    ) -> Result<impl Stream<Item = Result<Bytes, ReqwestError>>, Error> {
-        let pdf_part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
-        let mut form = multipart::Form::new().part("file.pdf", pdf_part);
-
+    ) -> Result<Bytes, Error> {
+        let form = multipart::Form::new();
+        let part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
+        let mut form = form.part("file.pdf", part);
         if let Some(pdfa) = pdfa {
             form = form.text("pdfa", pdfa.to_string());
         }
-
-        form = form.text("pdfua", pdfua.to_string());
-
-        self.post_stream("forms/pdfengines/convert", form, None)
-            .await
+        let form = form.text("pdfua", pdfua.to_string());
+        self.post("forms/pdfengines/convert", form, None)
     }
 
     /// Read the metadata of a PDF file
-    pub async fn read_metadata(
+    pub fn read_metadata(
         &self,
         pdf_bytes: Vec<u8>,
     ) -> Result<HashMap<String, serde_json::Value>, Error> {
@@ -383,27 +330,24 @@ impl StreamingClient {
         let form = form.part("file.pdf", part);
 
         #[derive(Debug, Deserialize)]
-        pub struct MeatadataContainer {
+        pub struct MetadataContainer {
             #[serde(rename = "file.pdf")]
             pub filepdf: HashMap<String, serde_json::Value>,
         }
 
-        let bytes = self
-            .post("forms/pdfengines/metadata/read", form, None)
-            .await?;
-        let metadata: MeatadataContainer = serde_json::from_slice(&bytes).map_err(|e| {
+        let bytes = self.post("forms/pdfengines/metadata/read", form, None)?;
+        let metadata: MetadataContainer = serde_json::from_slice(&bytes).map_err(|e| {
             Error::ParseError(
                 "Metadata".to_string(),
                 String::from_utf8_lossy(&bytes).to_string(),
                 e.to_string(),
             )
         })?;
-
         Ok(metadata.filepdf)
     }
 
     /// Write metadata to a PDF file
-    pub async fn write_metadata(
+    pub fn write_metadata(
         &self,
         pdf_bytes: Vec<u8>,
         metadata: HashMap<String, serde_json::Value>,
@@ -411,45 +355,47 @@ impl StreamingClient {
         let form = multipart::Form::new();
         let part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
         let form = form.part("file.pdf", part);
+
         let metadata = serde_json::to_string(&metadata).map_err(|e| {
             Error::ParseError("Metadata".to_string(), "".to_string(), e.to_string())
         })?;
+
         let part = multipart::Part::text(metadata);
         let form = form.part("metadata", part);
+
         self.post("forms/pdfengines/metadata/write", form, None)
-            .await
     }
 
     /// Get the health status of the Gotenberg server.
-    pub async fn health_check(&self) -> Result<health::Health, Error> {
+    pub fn health_check(&self) -> Result<health::Health, Error> {
         let url = format!("{}/health", self.base_url);
-        let response = self.client.get(&url).send().await.map_err(Into::into)?;
-        let body = response.text().await.map_err(Into::into)?;
+        let response = self.client.get(&url).send().map_err(Into::into)?;
+        let body = response.text().map_err(Into::into)?;
         serde_json::from_str(&body)
             .map_err(|e| Error::ParseError("Health".to_string(), body, e.to_string()))
     }
 
     /// Get the version of the Gotenberg server.
-    pub async fn version(&self) -> Result<String, Error> {
+    pub fn version(&self) -> Result<String, Error> {
         let url = format!("{}/version", self.base_url);
-        let response = self.client.get(&url).send().await.map_err(Into::into)?;
-        let body = response.text().await.map_err(Into::into)?;
+        let response = self.client.get(&url).send().map_err(Into::into)?;
+        let body = response.text().map_err(Into::into)?;
         Ok(body)
     }
 
     /// Get the metrics of the Gotenberg server in prometheus format.
     /// The results will not be parsed and are returned as a multi-line string.
     ///
-    /// By default the namespace is `gotenberg`, but this can be changed by passing `--prometheus-namespace` to the Gotenberg server on startup.
+    /// By default, the namespace is `gotenberg`, but this can be changed by passing `--prometheus-namespace` to the Gotenberg server on startup.
     ///
     /// - `{namespace}_chromium_requests_queue_size`    Current number of Chromium conversion requests waiting to be treated.
-    /// - `{namespace}_chromium_restarts_count`	        Current number of Chromium restarts.
-    /// - `{namespace}_libreoffice_requests_queue_size`	Current number of LibreOffice conversion requests waiting to be treated.
-    /// - `{namespace}_libreoffice_restarts_count`	    Current number of LibreOffice restarts.
-    pub async fn metrics(&self) -> Result<String, Error> {
+    /// - `{namespace}_chromium_restarts_count`         Current number of Chromium restarts.
+    /// - `{namespace}_libreoffice_requests_queue_size` Current number of LibreOffice conversion requests waiting to be treated.
+    /// - `{namespace}_libreoffice_restarts_count`      Current number of LibreOffice restarts.
+    pub fn metrics(&self) -> Result<String, Error> {
         let url = format!("{}/prometheus/metrics", self.base_url);
-        let response = self.client.get(&url).send().await.map_err(Into::into)?;
-        let body = response.text().await.map_err(Into::into)?;
+        let response = self.client.get(&url).send().map_err(Into::into)?;
+        let body = response.text().map_err(Into::into)?;
         Ok(body)
     }
 }

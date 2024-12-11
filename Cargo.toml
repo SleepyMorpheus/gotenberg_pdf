@@ -9,7 +9,6 @@ keywords = ["gotenberg", "pdf", "chromium", "libreoffice"]
 [dependencies]
 reqwest = { version = "0.12", features = [
     "multipart",
-    "http2",
 ], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 bytes = "1.0"
@@ -18,10 +17,12 @@ zeroize = { version = "1.8", optional = true }
 futures = { version = "0.3", optional = true }
 
 [features]
-default = ["zeroize"]
+default = ["zeroize", "stream", "blocking"]
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 stream = ["reqwest/stream", "futures"]
+http2 = ["reqwest/http2"]
+blocking = ["reqwest/blocking"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

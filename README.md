@@ -213,6 +213,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+
+### Use the blocking client for use without tokio or another async runtime.
+
+Requires the `blocking` feature to be enabled in your `Cargo.toml`.
+
+```rust
+use gotenberg_pdf::{BlockingClient, WebOptions, PaperFormat};
+
+fn main() {
+    // Initialize the client with the Gotenberg server URL
+    let client = BlockingClient::new("http://localhost:3000");
+
+    // Define optional rendering configurations
+    let mut options = WebOptions::default();
+    options.set_paper_format(PaperFormat::A4);
+
+    // Convert a URL to PDF
+    let pdf_bytes = client.pdf_from_url("https://example.com", options).unwrap();
+}
+```
+
 ## Configuration Options
 
 ### [`WebOptions`]
@@ -324,11 +345,20 @@ Provides control over the document generation process from the LibreOffice engin
 
 ## Features
 
+
+### TLS / HTTPS
+
 By default there is no support for HTTPS. If you need TLS, you can enable it by adding one of the following features to your `Cargo.toml`:
 
  - `rustls-tls` - Enables TLS / HTTPS support using the `rustls` library.
  - `native-tls` - Enables TLS / HTTPS support using the native system TLS library.
 
-Additional features:
-  - `stream` - Enables the streaming client to stream generated PDFs directly to disk or other destinations.
-  - `zeroize` - Enables zeroizing sensitive data in the client. Enabled by default.
+### HTTP/2
+
+By default there is no HTTP/2 support. HTTP/2 support can be enalbed with the `http2` feature. Even with the feature enabled, HTTP/2 will not be selected unless connecting over HTTPS. If you need HTTP/2 over plain HTTP, you need to make use of [`Client::new_with_client`] and [`reqwest::ClientBuilder::http2_prior_knowledge`].
+
+### Additional features
+
+  - `stream`   - Enables the streaming client to stream generated PDFs directly to disk or other destinations.
+  - `blocking` - Enables the blocking client for use without tokio or another async runtime.
+  - `zeroize`  - Enables zeroizing sensitive data in the client. Enabled by default.

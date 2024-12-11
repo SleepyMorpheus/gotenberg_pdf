@@ -34,5 +34,14 @@ jobs:
           echo "Failed to reach Gotenberg";
           exit 1
 
-      - name: Run tests
-        run: cargo test --features "stream"
+      - name: Run tests (no features)
+        run: cargo test
+
+      - name: Run tests (stream only)
+        run: cargo test --features=stream
+
+      - name: Run tests (blocking only)
+        run: cargo test --features=blocking
+
+      - name: Run tests (all features)
+        run: cargo test --all-features

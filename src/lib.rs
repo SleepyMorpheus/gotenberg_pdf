@@ -10,9 +10,16 @@ mod paper_format;
 #[cfg(feature = "stream")]
 mod streaming_client;
 
+#[cfg(feature = "blocking")]
+mod blocking_client;
+
 #[cfg(feature = "stream")]
 #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 pub use crate::streaming_client::StreamingClient;
+
+#[cfg(feature = "blocking")]
+#[cfg_attr(docsrs, doc(cfg(feature = "blocking")))]
+pub use crate::blocking_client::BlockingClient;
 
 pub use crate::paper_format::*;
 /// Re-exported from the `bytes` crate (See [`bytes::Bytes`]).
@@ -31,6 +38,9 @@ mod tests;
 
 #[cfg(all(test, feature = "stream"))]
 mod streaming_tests;
+
+#[cfg(all(test, feature = "blocking"))]
+mod blocking_tests;
 
 /// Error type for the Gotenberg API.
 #[derive(Debug)]
@@ -399,6 +409,167 @@ impl WebOptions {
 
         form
     }
+
+    #[cfg(feature = "blocking")]
+    fn fill_form_blocking(
+        self,
+        form: reqwest::blocking::multipart::Form,
+    ) -> reqwest::blocking::multipart::Form {
+        let mut form = form;
+
+        if let Some(single_page) = self.single_page {
+            form = form.text("singlePage", single_page.to_string());
+        }
+
+        if let Some(paper_width) = self.paper_width {
+            form = form.text("paperWidth", format!("{}", paper_width));
+        }
+
+        if let Some(paper_height) = self.paper_height {
+            form = form.text("paperHeight", format!("{}", paper_height));
+        }
+
+        if let Some(margin_top) = self.margin_top {
+            form = form.text("marginTop", margin_top.to_string());
+        }
+
+        if let Some(margin_bottom) = self.margin_bottom {
+            form = form.text("marginBottom", margin_bottom.to_string());
+        }
+
+        if let Some(margin_left) = self.margin_left {
+            form = form.text("marginLeft", margin_left.to_string());
+        }
+
+        if let Some(margin_right) = self.margin_right {
+            form = form.text("marginRight", margin_right.to_string());
+        }
+
+        if let Some(prefer_css_page_size) = self.prefer_css_page_size {
+            form = form.text("preferCssPageSize", prefer_css_page_size.to_string());
+        }
+
+        if let Some(generate_document_outline) = self.generate_document_outline {
+            form = form.text(
+                "generateDocumentOutline",
+                generate_document_outline.to_string(),
+            );
+        }
+
+        if let Some(print_background) = self.print_background {
+            form = form.text("printBackground", print_background.to_string());
+        }
+
+        if let Some(omit_background) = self.omit_background {
+            form = form.text("omitBackground", omit_background.to_string());
+        }
+
+        if let Some(landscape) = self.landscape {
+            form = form.text("landscape", landscape.to_string());
+        }
+
+        if let Some(scale) = self.scale {
+            form = form.text("scale", scale.to_string());
+        }
+
+        if let Some(native_page_ranges) = self.native_page_ranges {
+            form = form.text("nativePageRanges", native_page_ranges.to_string());
+        }
+
+        if let Some(header_html) = self.header_html {
+            let file_bytes = header_html.into_bytes();
+            let part = reqwest::blocking::multipart::Part::bytes(file_bytes)
+                .file_name("header.html")
+                .mime_str("text/html")
+                .unwrap();
+            form = form.part("header.html", part);
+        }
+
+        if let Some(footer_html) = self.footer_html {
+            let file_bytes = footer_html.into_bytes();
+            let part = reqwest::blocking::multipart::Part::bytes(file_bytes)
+                .file_name("footer.html")
+                .mime_str("text/html")
+                .unwrap();
+            form = form.part("footer.html", part);
+        }
+
+        if let Some(wait_delay) = self.wait_delay {
+            form = form.text("waitDelay", format!("{}ms", wait_delay.as_millis()));
+        }
+
+        if let Some(wait_for_expression) = self.wait_for_expression {
+            form = form.text("waitForExpression", wait_for_expression);
+        }
+
+        if let Some(emulated_media_type) = self.emulated_media_type {
+            form = form.text("emulatedMediaType", emulated_media_type.to_string());
+        }
+
+        if let Some(cookies) = self.cookies {
+            form = form.text("cookies", serde_json::to_string(&cookies).unwrap());
+        }
+
+        if let Some(skip_network_idle_events) = self.skip_network_idle_events {
+            form = form.text(
+                "skipNetworkIdleEvents",
+                skip_network_idle_events.to_string(),
+            );
+        }
+
+        if let Some(user_agent) = self.user_agent {
+            form = form.text("userAgent", user_agent);
+        }
+
+        if let Some(extra_http_headers) = self.extra_http_headers {
+            form = form.text(
+                "extraHttpHeaders",
+                serde_json::to_string(&extra_http_headers).unwrap(),
+            );
+        }
+
+        if let Some(pdfa) = self.pdfa {
+            form = form.text("pdfa", pdfa.to_string());
+        }
+
+        if let Some(pdfua) = self.pdfua {
+            form = form.text("pdfua", pdfua.to_string());
+        }
+
+        if let Some(metadata) = self.metadata {
+            form = form.text("metadata", serde_json::to_string(&metadata).unwrap());
+        }
+
+        if let Some(fail_on_http_status_codes) = self.fail_on_http_status_codes {
+            form = form.text(
+                "failOnHttpStatusCodes",
+                serde_json::to_string(&fail_on_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_http_status_codes) = self.fail_on_resource_http_status_codes {
+            form = form.text(
+                "failOnResourceHttpStatusCodes",
+                serde_json::to_string(&fail_on_resource_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_loading_failed) = self.fail_on_resource_loading_failed {
+            form = form.text(
+                "failOnResourceLoadingFailed",
+                fail_on_resource_loading_failed.to_string(),
+            );
+        }
+
+        if let Some(fail_on_console_exceptions) = self.fail_on_console_exceptions {
+            form = form.text(
+                "failOnConsoleExceptions",
+                fail_on_console_exceptions.to_string(),
+            );
+        }
+
+        form
+    }
 }
 
 /// Options for taking a screenshot of a webpage.
@@ -579,6 +750,106 @@ impl ScreenshotOptions {
 
         form
     }
+
+    #[cfg(feature = "blocking")]
+    fn fill_form_blocking(
+        self,
+        form: reqwest::blocking::multipart::Form,
+    ) -> reqwest::blocking::multipart::Form {
+        let mut form = form;
+
+        if let Some(width) = self.width {
+            form = form.text("width", width.to_string());
+        }
+
+        if let Some(height) = self.height {
+            form = form.text("height", height.to_string());
+        }
+
+        if let Some(clip) = self.clip {
+            form = form.text("clip", clip.to_string());
+        }
+
+        if let Some(format) = self.format {
+            form = form.text("format", format.to_string());
+        }
+
+        if let Some(quality) = self.quality {
+            form = form.text("quality", quality.to_string());
+        }
+
+        if let Some(omit_background) = self.omit_background {
+            form = form.text("omitBackground", omit_background.to_string());
+        }
+
+        if let Some(optimize_for_speed) = self.optimize_for_speed {
+            form = form.text("optimizeForSpeed", optimize_for_speed.to_string());
+        }
+
+        if let Some(wait_delay) = self.wait_delay {
+            form = form.text("waitDelay", format!("{}ms", wait_delay.as_millis()));
+        }
+
+        if let Some(wait_for_expression) = self.wait_for_expression {
+            form = form.text("waitForExpression", wait_for_expression);
+        }
+
+        if let Some(emulated_media_type) = self.emulated_media_type {
+            form = form.text("emulatedMediaType", emulated_media_type.to_string());
+        }
+
+        if let Some(cookies) = self.cookies {
+            form = form.text("cookies", serde_json::to_string(&cookies).unwrap());
+        }
+
+        if let Some(skip_network_idle_events) = self.skip_network_idle_events {
+            form = form.text(
+                "skipNetworkIdleEvents",
+                skip_network_idle_events.to_string(),
+            );
+        }
+
+        if let Some(user_agent) = self.user_agent {
+            form = form.text("userAgent", user_agent);
+        }
+
+        if let Some(extra_http_headers) = self.extra_http_headers {
+            form = form.text(
+                "extraHttpHeaders",
+                serde_json::to_string(&extra_http_headers).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_http_status_codes) = self.fail_on_http_status_codes {
+            form = form.text(
+                "failOnHttpStatusCodes",
+                serde_json::to_string(&fail_on_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_http_status_codes) = self.fail_on_resource_http_status_codes {
+            form = form.text(
+                "failOnResourceHttpStatusCodes",
+                serde_json::to_string(&fail_on_resource_http_status_codes).unwrap(),
+            );
+        }
+
+        if let Some(fail_on_resource_loading_failed) = self.fail_on_resource_loading_failed {
+            form = form.text(
+                "failOnResourceLoadingFailed",
+                fail_on_resource_loading_failed.to_string(),
+            );
+        }
+
+        if let Some(fail_on_console_exceptions) = self.fail_on_console_exceptions {
+            form = form.text(
+                "failOnConsoleExceptions",
+                fail_on_console_exceptions.to_string(),
+            );
+        }
+
+        form
+    }
 }
 
 /// Options for converting a document to a PDF using the LibreOffice engine.
@@ -664,6 +935,131 @@ pub struct DocumentOptions {
 /// Options for converting a document to a PDF using the LibreOffice engine.
 impl DocumentOptions {
     fn fill_form(self, form: reqwest::multipart::Form) -> reqwest::multipart::Form {
+        let mut form = form;
+
+        if let Some(password) = self.password {
+            form = form.text("password", password);
+        }
+
+        if let Some(landscape) = self.landscape {
+            form = form.text("landscape", landscape.to_string());
+        }
+
+        if let Some(native_page_ranges) = self.native_page_ranges {
+            form = form.text("nativePageRanges", native_page_ranges.to_string());
+        }
+
+        if let Some(export_form_fields) = self.export_form_fields {
+            form = form.text("exportFormFields", export_form_fields.to_string());
+        }
+
+        if let Some(allow_duplicate_field_names) = self.allow_duplicate_field_names {
+            form = form.text(
+                "allowDuplicateFieldNames",
+                allow_duplicate_field_names.to_string(),
+            );
+        }
+
+        if let Some(export_bookmarks) = self.export_bookmarks {
+            form = form.text("exportBookmarks", export_bookmarks.to_string());
+        }
+
+        if let Some(export_bookmarks_to_pdf_destination) = self.export_bookmarks_to_pdf_destination
+        {
+            form = form.text(
+                "exportBookmarksToPdfDestination",
+                export_bookmarks_to_pdf_destination.to_string(),
+            );
+        }
+
+        if let Some(export_placeholders) = self.export_placeholders {
+            form = form.text("exportPlaceholders", export_placeholders.to_string());
+        }
+
+        if let Some(export_notes) = self.export_notes {
+            form = form.text("exportNotes", export_notes.to_string());
+        }
+
+        if let Some(export_notes_pages) = self.export_notes_pages {
+            form = form.text("exportNotesPages", export_notes_pages.to_string());
+        }
+
+        if let Some(export_only_notes_pages) = self.export_only_notes_pages {
+            form = form.text("exportOnlyNotesPages", export_only_notes_pages.to_string());
+        }
+
+        if let Some(export_notes_in_margin) = self.export_notes_in_margin {
+            form = form.text("exportNotesInMargin", export_notes_in_margin.to_string());
+        }
+
+        if let Some(convert_ooo_target_to_pdf_target) = self.convert_ooo_target_to_pdf_target {
+            form = form.text(
+                "convertOooTargetToPdfTarget",
+                convert_ooo_target_to_pdf_target.to_string(),
+            );
+        }
+
+        if let Some(export_links_relative_fsys) = self.export_links_relative_fsys {
+            form = form.text(
+                "exportLinksRelativeFsys",
+                export_links_relative_fsys.to_string(),
+            );
+        }
+
+        if let Some(export_hidden_slides) = self.export_hidden_slides {
+            form = form.text("exportHiddenSlides", export_hidden_slides.to_string());
+        }
+
+        if let Some(skip_empty_pages) = self.skip_empty_pages {
+            form = form.text("skipEmptyPages", skip_empty_pages.to_string());
+        }
+
+        if let Some(add_original_document_as_stream) = self.add_original_document_as_stream {
+            form = form.text(
+                "addOriginalDocumentAsStream",
+                add_original_document_as_stream.to_string(),
+            );
+        }
+
+        if let Some(single_page_sheets) = self.single_page_sheets {
+            form = form.text("singlePageSheets", single_page_sheets.to_string());
+        }
+
+        if let Some(lossless_image_compression) = self.lossless_image_compression {
+            form = form.text(
+                "losslessImageCompression",
+                lossless_image_compression.to_string(),
+            );
+        }
+
+        if let Some(quality) = self.quality {
+            form = form.text("quality", quality.to_string());
+        }
+
+        if let Some(reduce_image_resolution) = self.reduce_image_resolution {
+            form = form.text("reduceImageResolution", reduce_image_resolution.to_string());
+        }
+
+        if let Some(max_image_resolution) = self.max_image_resolution {
+            form = form.text("maxImageResolution", max_image_resolution.to_string());
+        }
+
+        if let Some(pdfa) = self.pdfa {
+            form = form.text("pdfa", pdfa.to_string());
+        }
+
+        if let Some(pdfua) = self.pdfua {
+            form = form.text("pdfua", pdfua.to_string());
+        }
+
+        form
+    }
+
+    #[cfg(feature = "blocking")]
+    fn fill_form_blocking(
+        self,
+        form: reqwest::blocking::multipart::Form,
+    ) -> reqwest::blocking::multipart::Form {
         let mut form = form;
 
         if let Some(password) = self.password {
