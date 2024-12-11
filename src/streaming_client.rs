@@ -47,7 +47,6 @@ impl StreamingClient {
         let base_url = base_url.trim_end_matches('/');
 
         let client = ReqwestClient::builder()
-            .http2_prior_knowledge()
             .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // 5 second less than the Gotenberg server's idle timeout
             .build()
             .unwrap();
