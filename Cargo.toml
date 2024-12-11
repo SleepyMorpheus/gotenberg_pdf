@@ -1,6 +1,6 @@
 [package]
 name = "gotenberg_pdf"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 description = "A Rust client for the Gotenberg PDF API"
@@ -17,7 +17,7 @@ zeroize = { version = "1.8", optional = true }
 futures = { version = "0.3", optional = true }
 
 [features]
-default = []
+default = ["zeroize"]
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 stream = ["reqwest/stream", "futures"]

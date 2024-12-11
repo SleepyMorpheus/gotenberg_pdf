@@ -22,7 +22,7 @@ Add `gotenberg_pdf` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gotenberg_pdf = "0.4"
+gotenberg_pdf = "0.5"
 ```
 
 Ensure you have a running instance of Gotenberg, typically via Docker:
@@ -345,7 +345,6 @@ Provides control over the document generation process from the LibreOffice engin
 
 ## Features
 
-
 ### TLS / HTTPS
 
 By default there is no support for HTTPS. If you need TLS, you can enable it by adding one of the following features to your `Cargo.toml`:
@@ -362,3 +361,9 @@ By default there is no HTTP/2 support. HTTP/2 support can be enalbed with the `h
   - `stream`   - Enables the streaming client to stream generated PDFs directly to disk or other destinations.
   - `blocking` - Enables the blocking client for use without tokio or another async runtime.
   - `zeroize`  - Enables zeroizing sensitive data in the client. Enabled by default.
+
+## Web Assembly / Browser Support
+
+This crate compiles to `wasm32-unknown-unknown` and is runnable in the browser. In the browser, it will use the built-in browser fetch API to make requests to the Gotenberg server. The `stream`, `blocking`, `rustls-tls` and `native-tls` features are not available on wasm32 or in the browser.
+
+Be aware that in the browser, the gotenberg server will need to be behind a proxy that sets the correct CORS headers ('Access-Control-Allow-Origin').
