@@ -33,8 +33,6 @@ docker run --rm -p 3000:3000 gotenberg/gotenberg:8
 
 **N.B.**: This crate is compatible with Gotenberg version 8.
 
-```rust
-
 ## Usage Examples
 
 ### Convert URL to PDF
