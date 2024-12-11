@@ -47,10 +47,7 @@ impl Client {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
-        let client = ReqwestClient::builder()
-            .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // 5 second less than the Gotenberg server's idle timeout
-            .build()
-            .unwrap();
+        let client = Client::create_client();
 
         Client {
             client,
@@ -58,6 +55,19 @@ impl Client {
             username: None,
             password: None,
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn create_client() -> ReqwestClient {
+        ReqwestClient::builder()
+            .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // Adjust for server timeout
+            .build()
+            .unwrap()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn create_client() -> ReqwestClient {
+        ReqwestClient::default()
     }
 
     /// Create a new instance of the API client with a custom Reqwest client.

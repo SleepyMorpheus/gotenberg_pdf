@@ -17,7 +17,7 @@ zeroize = { version = "1.8", optional = true }
 futures = { version = "0.3", optional = true }
 
 [features]
-default = ["zeroize", "stream", "blocking"]
+default = []
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 stream = ["reqwest/stream", "futures"]
@@ -25,4 +25,7 @@ http2 = ["reqwest/http2"]
 blocking = ["reqwest/blocking"]
 
 [dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1", features = ["full"] }

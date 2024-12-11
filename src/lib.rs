@@ -33,14 +33,17 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
 
-#[cfg(all(test, feature = "stream"))]
+#[cfg(all(test, feature = "stream", not(target_arch = "wasm32")))]
 mod streaming_tests;
 
-#[cfg(all(test, feature = "blocking"))]
+#[cfg(all(test, feature = "blocking", not(target_arch = "wasm32")))]
 mod blocking_tests;
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod wasm_tests;
 
 /// Error type for the Gotenberg API.
 #[derive(Debug)]
