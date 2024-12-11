@@ -35,13 +35,13 @@ jobs:
           exit 1
 
       - name: Run tests (no features)
-        run: cargo test
+        run: cargo test --lib
 
       - name: Run tests (stream only)
-        run: cargo test --features=stream
+        run: cargo test --lib --features=stream
 
       - name: Run tests (blocking only)
-        run: cargo test --features=blocking
+        run: cargo test --lib --features=blocking
 
-      - name: Run tests (all features)
+      - name: Run tests (all features and doctests)
         run: cargo test --all-features
