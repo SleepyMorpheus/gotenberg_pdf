@@ -22,7 +22,7 @@ Add `gotenberg_pdf` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gotenberg_pdf = "0.3"
+gotenberg_pdf = "0.4"
 ```
 
 Ensure you have a running instance of Gotenberg, typically via Docker:
