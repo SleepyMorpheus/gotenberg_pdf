@@ -324,11 +324,10 @@ Provides control over the document generation process from the LibreOffice engin
 
 ## Features
 
-By default there is no support for HTTPS or HTTP/2. If you need these features, you can enable them by adding the following features to your `Cargo.toml`:
+By default there is no support for HTTPS. If you need TLS, you can enable it by adding one of the following features to your `Cargo.toml`:
 
  - `rustls-tls` - Enables TLS / HTTPS support using the `rustls` library.
  - `native-tls` - Enables TLS / HTTPS support using the native system TLS library.
- - `http2` - Enables HTTP/2 support. Use this if you need to post data larger than 32MB.
 
 Additional features:
   - `stream` - Enables the streaming client to stream generated PDFs directly to disk or other destinations.
