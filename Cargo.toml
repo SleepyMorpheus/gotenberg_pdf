@@ -17,7 +17,7 @@ zeroize = { version = "1.8", optional = true }
 futures = { version = "0.3", optional = true }
 
 [features]
-default = ["zeroize"]
+default = ["zeroize", "http2"]
 rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 http2 = ["reqwest/http2"]

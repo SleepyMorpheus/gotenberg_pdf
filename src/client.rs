@@ -6,6 +6,9 @@ use reqwest::{Client as ReqwestClient, Response};
 use zeroize::Zeroize;
 
 /// Gotenberg API client.
+///
+/// The client can be freely cloned and moved across threads.
+/// All clones use the same connection pool for connection re-use.
 #[derive(Clone)]
 pub struct Client {
     client: ReqwestClient,
@@ -44,26 +47,57 @@ impl Client {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
+        let client = ReqwestClient::builder()
+            .http2_prior_knowledge()
+            .pool_idle_timeout(Some(std::time::Duration::from_secs(25))) // 5 second less than the Gotenberg server's idle timeout
+            .build()
+            .unwrap();
+
         Client {
-            client: ReqwestClient::new(),
+            client,
             base_url: base_url.to_string(),
             username: None,
             password: None,
         }
     }
 
-    /// Create a new instance of the API client with basic auth.
-    /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
-    pub fn new_with_auth(base_url: &str, username: &str, password: &str) -> Self {
+    /// Create a new instance of the API client with a custom Reqwest client.
+    ///
+    /// Best practices include:
+    ///   - `pool_idle_timeout`. Set the pool timeout on the client to 5 seconds less than the Gotenberg server's idle timeout as set by `--api-timeout`.
+    ///   - `http2_prior_knowledge`. Use HTTP/2 without the need for ALPN negotiation. This is useful for clients that know the server supports HTTP/2.
+    pub fn new_with_client(base_url: &str, client: ReqwestClient) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
 
         Client {
-            client: ReqwestClient::new(),
+            client,
             base_url: base_url.to_string(),
-            username: Some(username.to_string()),
-            password: Some(password.to_string()),
+            username: None,
+            password: None,
         }
+    }
+
+    /// Set the basic auth username and password for the Gotenberg server, consuming the current client and returning a new instance of the client.
+    /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
+    ///
+    /// # Example
+    /// ```rust
+    /// use gotenberg_pdf::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///    let client = Client::new("http://localhost:3000").auth("username", "password");
+    ///
+    ///   // Now you can use the client to make requests
+    /// }
+    /// ```
+    pub fn auth(self, username: &str, password: &str) -> Self {
+        let mut client = self;
+        client.username = Some(username.to_string());
+        client.password = Some(password.to_string());
+
+        client
     }
 
     /// Generic POST method that takes a multipart form and sends it.
