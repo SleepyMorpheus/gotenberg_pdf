@@ -11,6 +11,7 @@ mod paper_format;
 mod streaming_client;
 
 #[cfg(feature = "stream")]
+#[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 pub use crate::streaming_client::StreamingClient;
 
 pub use crate::paper_format::*;

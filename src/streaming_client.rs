@@ -7,6 +7,7 @@ use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response};
 use zeroize::Zeroize;
 
 /// Gotenberg Streaming API client. Available with the `stream` feature enabled.
+#[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 #[derive(Clone)]
 pub struct StreamingClient {
     client: ReqwestClient,
@@ -62,8 +63,8 @@ impl StreamingClient {
     /// Create a new instance of the API client with a custom Reqwest client.
     ///
     /// Best practices include:
-    ///   - `pool_idle_timeout`. Set the pool timeout on the client to 5 seconds less than the Gotenberg server's idle timeout as set by `--api-timeout`.
-    ///   - `http2_prior_knowledge`. Use HTTP/2 without the need for ALPN negotiation. This is useful for clients that know the server supports HTTP/2.
+    ///   - [`reqwest::ClientBuilder::pool_idle_timeout`]. Set the pool timeout on the client to 5 seconds less than the Gotenberg server's idle timeout as set by `--api-timeout`.
+    ///   - [`reqwest::ClientBuilder::http2_prior_knowledge`]. Use HTTP/2 without the need for ALPN negotiation. Useful if gotenberg is not behind a proxy.
     pub fn new_with_client(base_url: &str, client: ReqwestClient) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
