@@ -64,7 +64,7 @@ impl Client {
     ///
     /// Best practices include:
     ///   - [`reqwest::ClientBuilder::pool_idle_timeout`]. Set the pool timeout on the client to 5 seconds less than the Gotenberg server's idle timeout as set by `--api-timeout`.
-    ///   - [`reqwest::ClientBuilder::http2_prior_knowledge`]. Use HTTP/2 without the need for ALPN negotiation. Useful if gotenberg is not behind a proxy.
+    ///   - [`reqwest::ClientBuilder::http2_prior_knowledge`]. Use HTTP/2 without the need for ALPN negotiation. Useful if gotenberg is not behind a proxy. If you want to use HTTP/2 without HTTPS / TLS, this must be set.
     pub fn new_with_client(base_url: &str, client: ReqwestClient) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
@@ -81,7 +81,8 @@ impl Client {
     /// You can set the username and password on the Gotenberg server by starting it with `--api-enable-basic-auth` and supplying `GOTENBERG_API_BASIC_AUTH_USERNAME` and `GOTENBERG_API_BASIC_AUTH_PASSWORD` environment variables.
     ///
     /// # Example
-    /// ```rust
+    ///
+    /// ```
     /// use gotenberg_pdf::Client;
     ///
     /// #[tokio::main]

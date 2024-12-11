@@ -21,7 +21,7 @@ pub enum PaperFormat {
 /// Linear dimention, allowed units are `mm`, `cm`, `in`, `px`, `pt`, `pc`. Default unit is `in`.
 ///
 /// Example:
-/// ```rust
+/// ```
 /// use gotenberg_pdf::LinearDimention;
 ///
 /// let width: LinearDimention = "11.7in".parse().unwrap();
