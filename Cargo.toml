@@ -29,3 +29,7 @@ wasm-bindgen-test = "0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+
+[package.metadata.docs.rs]
+
+all-features = true
