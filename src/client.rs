@@ -78,7 +78,6 @@ impl Client {
     pub fn new_with_client(base_url: &str, client: ReqwestClient) -> Self {
         // Strip trailing slashes
         let base_url = base_url.trim_end_matches('/');
-
         Client {
             client,
             base_url: base_url.to_string(),
@@ -111,25 +110,36 @@ impl Client {
     }
 
     /// Generic POST method that takes a multipart form and sends it.
+    /// If webhook options are provided, their headers are added to the request.
+    /// In the case of webhook usage, the server will respond with 204 No Content and no bytes,
+    /// so we return empty bytes.
     async fn post(
         &self,
         endpoint: &str,
         form: multipart::Form,
         trace: Option<String>,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let url = format!("{}/{}", self.base_url, endpoint);
-
         let mut req = self.client.post(&url).multipart(form);
+
         if let Some(trace) = trace {
             req = req.header("Gotenberg-Trace", trace);
         }
-
+        if let Some(webhook) = webhook {
+            req = req.headers(webhook.to_headers());
+        }
         // Add basic auth if username and password are provided
         if let (Some(username), Some(password)) = (&self.username, &self.password) {
             req = req.basic_auth(username, Some(password));
         }
 
         let response: Response = req.send().await.map_err(Into::into)?;
+
+        // If webhook is enabled, the server returns 204 No Content.
+        if response.status() == reqwest::StatusCode::NO_CONTENT {
+            return Ok(Bytes::new());
+        }
 
         if !response.status().is_success() {
             let status = response.status();
@@ -144,17 +154,27 @@ impl Client {
     }
 
     /// Convert a URL to a PDF using the Chromium engine.
-    pub async fn pdf_from_url(&self, url: &str, options: WebOptions) -> Result<Bytes, Error> {
+    pub async fn pdf_from_url(
+        &self,
+        url: &str,
+        options: WebOptions,
+        webhook: Option<&WebhookOptions>,
+    ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
         let form = options.fill_form(form);
-        self.post("forms/chromium/convert/url", form, trace).await
+        self.post("forms/chromium/convert/url", form, trace, webhook)
+            .await
     }
 
     /// Convert HTML to a PDF using the Chromium engine.
-    pub async fn pdf_from_html(&self, html: &str, options: WebOptions) -> Result<Bytes, Error> {
+    pub async fn pdf_from_html(
+        &self,
+        html: &str,
+        options: WebOptions,
+        webhook: Option<&WebhookOptions>,
+    ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
-
         let form = multipart::Form::new();
         let file_bytes = html.to_string().into_bytes();
         let part = multipart::Part::bytes(file_bytes)
@@ -163,7 +183,8 @@ impl Client {
             .unwrap();
         let form = form.part("index.html", part);
         let form = options.fill_form(form);
-        self.post("forms/chromium/convert/html", form, trace).await
+        self.post("forms/chromium/convert/html", form, trace, webhook)
+            .await
     }
 
     /// Convert Markdown to a PDF using the Chromium engine.
@@ -189,6 +210,7 @@ impl Client {
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: WebOptions,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
@@ -220,7 +242,7 @@ impl Client {
             form
         };
 
-        self.post("forms/chromium/convert/markdown", form, trace)
+        self.post("forms/chromium/convert/markdown", form, trace, webhook)
             .await
     }
 
@@ -229,11 +251,12 @@ impl Client {
         &self,
         url: &str,
         options: ScreenshotOptions,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
         let form = multipart::Form::new().text("url", url.to_string());
         let form = options.fill_form(form);
-        self.post("forms/chromium/screenshot/url", form, trace)
+        self.post("forms/chromium/screenshot/url", form, trace, webhook)
             .await
     }
 
@@ -242,6 +265,7 @@ impl Client {
         &self,
         html: &str,
         options: ScreenshotOptions,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
@@ -253,7 +277,7 @@ impl Client {
             .unwrap();
         let form = form.part("index.html", part);
         let form = options.fill_form(form);
-        self.post("forms/chromium/screenshot/html", form, trace)
+        self.post("forms/chromium/screenshot/html", form, trace, webhook)
             .await
     }
 
@@ -263,6 +287,7 @@ impl Client {
         html_template: &str,
         markdown: HashMap<&str, &str>,
         options: ScreenshotOptions,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
@@ -294,7 +319,7 @@ impl Client {
             form
         };
 
-        self.post("forms/chromium/screenshot/markdown", form, trace)
+        self.post("forms/chromium/screenshot/markdown", form, trace, webhook)
             .await
     }
 
@@ -318,6 +343,7 @@ impl Client {
         filename: &str,
         bytes: Vec<u8>,
         options: DocumentOptions,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let trace = options.trace_id.clone();
 
@@ -325,7 +351,8 @@ impl Client {
         let part = multipart::Part::bytes(bytes).file_name(filename.to_string());
         let form = form.part("files", part);
         let form = options.fill_form(form);
-        self.post("forms/libreoffice/convert", form, trace).await
+        self.post("forms/libreoffice/convert", form, trace, webhook)
+            .await
     }
 
     /// Transforms a PDF file into the requested PDF/A format and/or PDF/UA.
@@ -334,6 +361,7 @@ impl Client {
         pdf_bytes: Vec<u8>,
         pdfa: Option<PDFFormat>,
         pdfua: bool,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let form = multipart::Form::new();
         let part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
@@ -342,7 +370,8 @@ impl Client {
             form = form.text("pdfa", pdfa.to_string());
         }
         let form = form.text("pdfua", pdfua.to_string());
-        self.post("forms/pdfengines/convert", form, None).await
+        self.post("forms/pdfengines/convert", form, None, webhook)
+            .await
     }
 
     /// Read the metadata of a PDF file
@@ -361,7 +390,7 @@ impl Client {
         }
 
         let bytes = self
-            .post("forms/pdfengines/metadata/read", form, None)
+            .post("forms/pdfengines/metadata/read", form, None, None)
             .await?;
         let metadata: MeatadataContainer = serde_json::from_slice(&bytes).map_err(|e| {
             Error::ParseError(
@@ -379,6 +408,7 @@ impl Client {
         &self,
         pdf_bytes: Vec<u8>,
         metadata: HashMap<String, serde_json::Value>,
+        webhook: Option<&WebhookOptions>,
     ) -> Result<Bytes, Error> {
         let form = multipart::Form::new();
         let part = multipart::Part::bytes(pdf_bytes).file_name("file.pdf".to_string());
@@ -388,7 +418,7 @@ impl Client {
         })?;
         let part = multipart::Part::text(metadata);
         let form = form.part("metadata", part);
-        self.post("forms/pdfengines/metadata/write", form, None)
+        self.post("forms/pdfengines/metadata/write", form, None, webhook)
             .await
     }
 

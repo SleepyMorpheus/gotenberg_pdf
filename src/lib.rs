@@ -23,10 +23,12 @@ pub use crate::streaming_client::StreamingClient;
 pub use crate::blocking_client::BlockingClient;
 
 pub use crate::paper_format::*;
+use crate::WebhookMethods::POST;
 /// Re-exported from the `bytes` crate (See [`bytes::Bytes`]).
 pub use bytes::Bytes;
 pub use client::*;
 pub use page_range::*;
+use reqwest::header::HeaderMap;
 use reqwest::multipart;
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
@@ -45,6 +47,9 @@ mod blocking_tests;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests;
+
+#[cfg(all(test))]
+mod test_helper;
 
 /// Error type for the Gotenberg API.
 #[derive(Debug)]
@@ -94,6 +99,78 @@ impl std::error::Error for Error {
             Error::CommunicationError(e) => Some(e),
             _ => None,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WebhookMethods {
+    POST,
+    PATCH,
+    PUT,
+}
+impl WebhookMethods {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::POST => "POST",
+            Self::PATCH => "PATCH",
+            Self::PUT => "PUT",
+        }
+    }
+}
+
+/// Configuration for uploading a document to a remote server after rendering.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WebhookOptions {
+    /// The callback to use for uploading the resulting document
+    pub url: String,
+    /// The callback to use in case of an error
+    pub error_url: String,
+    /// The HTTP method to use for the successful callback
+    /// Default: `POST`
+    pub method: Option<WebhookMethods>,
+    /// The HTTP method to use for the error callback
+    /// Default: `POST`
+    pub error_method: Option<WebhookMethods>,
+    /// Additional headers to send with the callback
+    /// Default: `{}` (empty)
+    pub extra_http_headers: Option<HashMap<String, String>>,
+}
+
+impl WebhookOptions {
+    pub fn to_headers(&self) -> HeaderMap {
+        let mut header_map = HeaderMap::new();
+        if let Some(extra_headers) = self.extra_http_headers.clone() {
+            let extra_headers_json = serde_json::to_string(&extra_headers).unwrap();
+            header_map.insert(
+                "GOTENBERG-WEBHOOK-EXTRA-HTTP-HEADERS",
+                extra_headers_json.parse().unwrap(),
+            );
+        }
+
+        header_map.insert("GOTENBERG-WEBHOOK-URL", self.url.parse().unwrap());
+        header_map.insert(
+            "GOTENBERG-WEBHOOK-ERROR-URL",
+            self.error_url.parse().unwrap(),
+        );
+        header_map.insert(
+            "GOTENBERG-WEBHOOK-METHOD",
+            self.method
+                .clone()
+                .unwrap_or(POST)
+                .as_str()
+                .parse()
+                .unwrap(),
+        );
+        header_map.insert(
+            "GOTENBERG-WEBHOOK-ERROR-METHOD",
+            self.error_method
+                .clone()
+                .unwrap_or(POST)
+                .as_str()
+                .parse()
+                .unwrap(),
+        );
+        header_map
     }
 }
 

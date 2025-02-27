@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_helper::TestWebserver;
 use std::time::Duration;
 use tokio;
 
@@ -23,7 +24,10 @@ async fn test_url_to_pdf() {
     options.skip_network_idle_events = Some(false);
 
     // Call the API and handle the result
-    match client.pdf_from_url("https://example.com", options).await {
+    match client
+        .pdf_from_url("https://example.com", options, None)
+        .await
+    {
         Ok(bytes) => {
             // Verify the response content
             assert!(!bytes.is_empty(), "PDF content should not be empty");
@@ -48,7 +52,10 @@ async fn test_web_options_trace_id() {
     let mut options = WebOptions::default();
     options.trace_id = Some("test-trace-id".to_string());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -58,7 +65,10 @@ async fn test_web_options_single_page() {
     let mut options = WebOptions::default();
     options.single_page = Some(true);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -69,7 +79,10 @@ async fn test_web_options_paper_size() {
     options.paper_width = Some("210mm".parse().unwrap());
     options.paper_height = Some("297mm".parse().unwrap());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -82,7 +95,10 @@ async fn test_web_options_margins() {
     options.margin_left = Some("0.5in".parse().unwrap());
     options.margin_right = Some("0.5in".parse().unwrap());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -92,7 +108,10 @@ async fn test_web_options_prefer_css_page_size() {
     let mut options = WebOptions::default();
     options.prefer_css_page_size = Some(true);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -102,7 +121,10 @@ async fn test_web_options_print_background() {
     let mut options = WebOptions::default();
     options.print_background = Some(true);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -112,7 +134,10 @@ async fn test_web_options_landscape() {
     let mut options = WebOptions::default();
     options.landscape = Some(true);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -122,7 +147,10 @@ async fn test_web_options_scale() {
     let mut options = WebOptions::default();
     options.scale = Some(1.5);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -132,7 +160,10 @@ async fn test_web_options_page_ranges() {
     let mut options = WebOptions::default();
     options.native_page_ranges = Some("1-3,5".parse().unwrap());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -143,7 +174,10 @@ async fn test_web_options_header_footer() {
     options.header_html = Some("<h1>Header Test: <div class='title'></div></h1>".into());
     options.footer_html = Some("Page Number: <div class='pageNumber'></div>".into());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -153,7 +187,10 @@ async fn test_web_options_wait_delay() {
     let mut options = WebOptions::default();
     options.wait_delay = Some(Duration::from_secs(1));
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -163,7 +200,10 @@ async fn test_web_options_emulated_media_type() {
     let mut options = WebOptions::default();
     options.emulated_media_type = Some("screen".parse().unwrap());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -173,7 +213,10 @@ async fn test_web_options_fail_on_http_status_codes() {
     let mut options = WebOptions::default();
     options.fail_on_http_status_codes = Some(vec![404, 500]);
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -186,7 +229,10 @@ async fn test_web_options_metadata() {
         ("Author".to_string(), "Test Author".into()),
     ]));
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -196,7 +242,10 @@ async fn test_web_options_user_agent() {
     let mut options = WebOptions::default();
     options.user_agent = Some("TestUserAgent/1.0".into());
 
-    let _pdf_bytes = client.pdf_from_html(HTML_CONTENT, options).await.unwrap();
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -207,7 +256,7 @@ async fn test_web_options_negative_scale() {
     // Negative scale should fail
     options.scale = Some(-1.0);
 
-    let result = client.pdf_from_html(HTML_CONTENT, options).await;
+    let result = client.pdf_from_html(HTML_CONTENT, options, None).await;
     assert!(result.is_err(), "Expected negative scale to fail");
 }
 
@@ -219,7 +268,7 @@ async fn test_web_options_unsupported_user_agent() {
     // Unsupported user agent format
     options.user_agent = Some("\0invalid_user_agent".into());
 
-    let result = client.pdf_from_html(HTML_CONTENT, options).await;
+    let result = client.pdf_from_html(HTML_CONTENT, options, None).await;
     assert!(result.is_err(), "Expected unsupported user agent to fail");
 }
 
@@ -230,7 +279,10 @@ async fn test_screenshot_options_trace_id() {
     let mut options = ScreenshotOptions::default();
     options.trace_id = Some("test-trace-id".to_string());
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -239,7 +291,10 @@ async fn test_screenshot_options_width() {
     let mut options = ScreenshotOptions::default();
     options.width = Some(1024);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -248,7 +303,10 @@ async fn test_screenshot_options_height() {
     let mut options = ScreenshotOptions::default();
     options.height = Some(768);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -257,7 +315,10 @@ async fn test_screenshot_options_clip() {
     let mut options = ScreenshotOptions::default();
     options.clip = Some(true);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -266,7 +327,10 @@ async fn test_screenshot_options_format() {
     let mut options = ScreenshotOptions::default();
     options.format = Some(ImageFormat::Jpeg);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -275,7 +339,10 @@ async fn test_screenshot_options_quality() {
     let mut options = ScreenshotOptions::default();
     options.quality = Some(85);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -284,7 +351,10 @@ async fn test_screenshot_options_omit_background() {
     let mut options = ScreenshotOptions::default();
     options.omit_background = Some(true);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -293,7 +363,10 @@ async fn test_screenshot_options_optimize_for_speed() {
     let mut options = ScreenshotOptions::default();
     options.optimize_for_speed = Some(true);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -302,7 +375,10 @@ async fn test_screenshot_options_wait_delay() {
     let mut options = ScreenshotOptions::default();
     options.wait_delay = Some(Duration::from_secs(1));
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -326,7 +402,10 @@ async fn test_screenshot_options_wait_for_expression() {
     let mut options = ScreenshotOptions::default();
     options.wait_for_expression = Some("window.isReady === true".to_string());
 
-    let _image_bytes = client.screenshot_html(html_content, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(html_content, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -335,7 +414,10 @@ async fn test_screenshot_options_emulated_media_type() {
     let mut options = ScreenshotOptions::default();
     options.emulated_media_type = Some(MediaType::Screen);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -349,7 +431,10 @@ async fn test_screenshot_options_cookies() {
         ..Default::default()
     }]);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -358,7 +443,10 @@ async fn test_screenshot_options_skip_network_idle_events() {
     let mut options = ScreenshotOptions::default();
     options.skip_network_idle_events = Some(false);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -367,7 +455,10 @@ async fn test_screenshot_options_user_agent() {
     let mut options = ScreenshotOptions::default();
     options.user_agent = Some("Test-Agent".to_string());
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -383,7 +474,10 @@ async fn test_screenshot_options_extra_http_headers() {
         .collect(),
     );
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -392,7 +486,10 @@ async fn test_screenshot_options_fail_on_http_status_codes() {
     let mut options = ScreenshotOptions::default();
     options.fail_on_http_status_codes = Some(vec![404, 500]);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -401,7 +498,10 @@ async fn test_screenshot_options_fail_on_resource_http_status_codes() {
     let mut options = ScreenshotOptions::default();
     options.fail_on_resource_http_status_codes = Some(vec![403, 502]);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -410,7 +510,10 @@ async fn test_screenshot_options_fail_on_resource_loading_failed() {
     let mut options = ScreenshotOptions::default();
     options.fail_on_resource_loading_failed = Some(true);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -419,7 +522,10 @@ async fn test_screenshot_options_fail_on_console_exceptions() {
     let mut options = ScreenshotOptions::default();
     options.fail_on_console_exceptions = Some(true);
 
-    let _image_bytes = client.screenshot_html(HTML_CONTENT, options).await.unwrap();
+    let _image_bytes = client
+        .screenshot_html(HTML_CONTENT, options, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -429,7 +535,7 @@ async fn test_doc_options_trace_id() {
     options.trace_id = Some("some-trace-id".to_string());
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -444,6 +550,7 @@ async fn test_doc_options_password() {
             "example.odt",
             PASSWORD_PROTECTED_ODT_CONTENT.to_vec(),
             options,
+            None,
         )
         .await
         .unwrap();
@@ -456,7 +563,7 @@ async fn test_doc_options_landscape() {
     options.landscape = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -468,7 +575,7 @@ async fn test_doc_options_export_form_fields() {
     options.export_form_fields = Some(false);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -480,7 +587,7 @@ async fn test_doc_options_allow_duplicate_field_names() {
     options.allow_duplicate_field_names = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -492,7 +599,7 @@ async fn test_doc_options_export_bookmarks() {
     options.export_bookmarks = Some(false);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -504,7 +611,7 @@ async fn test_doc_options_export_notes() {
     options.export_notes = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -516,7 +623,7 @@ async fn test_doc_options_quality() {
     options.quality = Some(75);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -528,7 +635,7 @@ async fn test_doc_options_max_image_resolution() {
     options.max_image_resolution = Some(600);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -540,7 +647,7 @@ async fn test_doc_options_pdfua() {
     options.pdfua = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -552,7 +659,7 @@ async fn test_doc_options_native_page_ranges() {
     options.native_page_ranges = Some("1-3,5".parse().unwrap());
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -564,7 +671,7 @@ async fn test_doc_options_export_bookmarks_to_pdf_destination() {
     options.export_bookmarks_to_pdf_destination = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -576,7 +683,7 @@ async fn test_doc_options_export_placeholders() {
     options.export_placeholders = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -588,7 +695,7 @@ async fn test_doc_options_export_notes_pages() {
     options.export_notes_pages = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -600,7 +707,7 @@ async fn test_doc_options_export_only_notes_pages() {
     options.export_only_notes_pages = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -612,7 +719,7 @@ async fn test_doc_options_export_notes_in_margin() {
     options.export_notes_in_margin = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -624,7 +731,7 @@ async fn test_doc_options_convert_ooo_target_to_pdf_target() {
     options.convert_ooo_target_to_pdf_target = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -636,7 +743,7 @@ async fn test_doc_options_export_links_relative_fsys() {
     options.export_links_relative_fsys = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -648,7 +755,7 @@ async fn test_doc_options_export_hidden_slides() {
     options.export_hidden_slides = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -660,7 +767,7 @@ async fn test_doc_options_skip_empty_pages() {
     options.skip_empty_pages = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -672,7 +779,7 @@ async fn test_doc_options_add_original_document_as_stream() {
     options.add_original_document_as_stream = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -684,7 +791,7 @@ async fn test_doc_options_single_page_sheets() {
     options.single_page_sheets = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -696,7 +803,7 @@ async fn test_doc_options_lossless_image_compression() {
     options.lossless_image_compression = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -708,7 +815,7 @@ async fn test_doc_options_reduce_image_resolution() {
     options.reduce_image_resolution = Some(true);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -720,7 +827,7 @@ async fn test_doc_options_pdfa() {
     options.pdfa = Some(PDFFormat::A1b);
 
     let _pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options)
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options, None)
         .await
         .unwrap();
 }
@@ -732,7 +839,7 @@ async fn test_pdf_metadata() {
 
     // Create the PDF
     let pdf_content = client
-        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options.clone())
+        .pdf_from_doc("example.docx", DOCX_CONTENT.to_vec(), options.clone(), None)
         .await
         .unwrap();
 
@@ -743,7 +850,7 @@ async fn test_pdf_metadata() {
     ]);
 
     let pdf_content = client
-        .write_metadata(pdf_content.to_vec(), metadata)
+        .write_metadata(pdf_content.to_vec(), metadata, None)
         .await
         .unwrap();
 
@@ -779,4 +886,121 @@ pub async fn test_version_string() {
 pub async fn test_metrics() {
     let client = Client::new("http://localhost:3000");
     let _metrics = client.metrics().await.unwrap();
+}
+
+#[tokio::test]
+pub async fn test_webhook_options() {
+    let webhook = &WebhookOptions {
+        url: "http://localhost:3000/success".to_string(),
+        error_url: "http://localhost:3000/error".to_string(),
+        method: None,
+        error_method: None,
+        extra_http_headers: None,
+    };
+
+    let headers = webhook.to_headers();
+
+    assert_eq!(headers.get("GOTENBERG-WEBHOOK-URL").unwrap(), &webhook.url);
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-ERROR-URL").unwrap(),
+        &webhook.error_url
+    );
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-METHOD").unwrap(),
+        WebhookMethods::POST.as_str()
+    );
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-ERROR-METHOD").unwrap(),
+        WebhookMethods::POST.as_str()
+    );
+    assert!(headers
+        .get("GOTENBERG-WEBHOOK-EXTRA-HTTP-HEADERS")
+        .is_none());
+}
+
+#[tokio::test]
+pub async fn test_webhook_options_headers() {
+    let extra_headers = HashMap::from([
+        ("Authorization".to_string(), "ABC".to_string()),
+        ("X-Custom-Header".to_string(), "XZY".to_string()),
+    ]);
+
+    let webhook = &WebhookOptions {
+        url: "http://localhost:3000/success".to_string(),
+        error_url: "http://localhost:3000/error".to_string(),
+        method: Some(WebhookMethods::PUT),
+        error_method: Some(WebhookMethods::PATCH),
+        extra_http_headers: Some(extra_headers.clone()),
+    };
+
+    let headers = webhook.to_headers();
+
+    assert_eq!(headers.get("GOTENBERG-WEBHOOK-URL").unwrap(), &webhook.url);
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-ERROR-URL").unwrap(),
+        &webhook.error_url
+    );
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-METHOD").unwrap(),
+        WebhookMethods::PUT.as_str()
+    );
+    assert_eq!(
+        headers.get("GOTENBERG-WEBHOOK-ERROR-METHOD").unwrap(),
+        WebhookMethods::PATCH.as_str()
+    );
+
+    let extra_headers_recovered: HashMap<String, String> = serde_json::from_str(
+        headers
+            .get("GOTENBERG-WEBHOOK-EXTRA-HTTP-HEADERS")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+    )
+    .unwrap();
+    for (key, value) in extra_headers.iter() {
+        assert_eq!(extra_headers_recovered.get(key), Some(value));
+    }
+}
+
+#[tokio::test]
+async fn test_pdf_from_html_with_webhook() {
+    // init test server to capture webhooks from Gotenberg
+    let server = TestWebserver::start(3001);
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let client = Client::new("http://localhost:3000");
+    let options = WebOptions::default();
+    let mut webhook = WebhookOptions::default();
+    webhook.url = "http://host.docker.internal:3001/webhook/success".to_string();
+    webhook.error_url = "http://host.docker.internal:3001/webhook/failure".to_string();
+    webhook.extra_http_headers = Some(HashMap::from([(
+        "X-Custom-Header".to_string(),
+        "ABC".to_string(),
+    )]));
+
+    let _pdf_bytes = client
+        .pdf_from_html(HTML_CONTENT, options, Some(&webhook))
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(2000)).await;
+    assert_eq!(_pdf_bytes.len(), 0);
+
+    // Retrieve the details captured by the test server.
+    let details = server
+        .get_request_details(Duration::from_secs(20))
+        .expect("Did not receive request details");
+
+    println!("Received request details: {:?}", details);
+
+    assert_eq!(details.method, "POST");
+    assert_eq!(details.url, "/webhook/success");
+
+    let header = details
+        .headers
+        .iter()
+        .find(|(name, _)| name.to_lowercase() == "x-custom-header");
+    assert_eq!(header.unwrap().1, "ABC");
+
+    // Ensure the server thread finishes.
+    server.join_handle.join().expect("Server thread panicked");
 }

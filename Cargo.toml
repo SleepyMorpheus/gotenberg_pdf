@@ -26,6 +26,9 @@ blocking = ["reqwest/blocking"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
+tiny_http = "0.12.0"
+
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1", features = ["full"] }

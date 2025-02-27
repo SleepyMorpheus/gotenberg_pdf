@@ -53,7 +53,7 @@ async fn main() {
     options.set_paper_format(PaperFormat::A4);
 
     // Convert a URL to PDF
-    let pdf_bytes = client.pdf_from_url("https://example.com", options).await.unwrap();
+    let pdf_bytes = client.pdf_from_url("https://example.com", options, None).await.unwrap();
 }
 ```
 
@@ -77,7 +77,7 @@ async fn main() {
 
     let options = WebOptions::default();
 
-    let pdf_bytes = client.pdf_from_html(html_content, options).await.unwrap();
+    let pdf_bytes = client.pdf_from_html(html_content, options, None).await.unwrap();
 }
 ```
 
@@ -107,7 +107,7 @@ async fn main() {
 
     let options = WebOptions::default();
 
-    let pdf_bytes = client.pdf_from_markdown(html_template, markdown_files, options).await.unwrap();
+    let pdf_bytes = client.pdf_from_markdown(html_template, markdown_files, options, None).await.unwrap();
 }
 ```
 
@@ -126,7 +126,7 @@ async fn main() {
     options.height = Some(1080);
     options.format = Some(ImageFormat::Png);
 
-    let image_bytes = client.screenshot_url("https://example.com", options).await.unwrap();
+    let image_bytes = client.screenshot_url("https://example.com", options, None).await.unwrap();
 
     println!("Screenshot captured: {} bytes", image_bytes.len());
 }
@@ -150,7 +150,7 @@ async fn main() {
         ..Default::default()
     };
 
-    let pdf_bytes = client.pdf_from_doc(filename, file_content, options).await.unwrap();
+    let pdf_bytes = client.pdf_from_doc(filename, file_content, options, None).await.unwrap();
 }
 ```
 
@@ -177,7 +177,7 @@ async fn main() {
     options.height = Some(600);
     options.format = Some(ImageFormat::Png);
 
-    let image_bytes = client.screenshot_html(html_content, options).await.unwrap();
+    let image_bytes = client.screenshot_html(html_content, options, None).await.unwrap();
 }
 ```
 
@@ -197,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = StreamingClient::new("http://localhost:3000");
 
     let options = WebOptions::default();
-    let mut stream = client.pdf_from_url("https://example.com", options).await?;
+    let mut stream = client.pdf_from_url("https://example.com", options, None).await?;
 
     // Create or overwrite the PDF file asynchronously
     let temp_dir = std::env::temp_dir();
@@ -232,7 +232,7 @@ fn main() {
     options.set_paper_format(PaperFormat::A4);
 
     // Convert a URL to PDF
-    let pdf_bytes = client.pdf_from_url("https://example.com", options).unwrap();
+    let pdf_bytes = client.pdf_from_url("https://example.com", options, None).unwrap();
 }
 ```
 
